@@ -100,7 +100,7 @@
 - Produces（`client/orb-renderer.js` 的 ESM 导出，Task 6/7 追加绘制与 `createOrb`）:
   - `stateToTargets(state: EnergyOrbState, nowMs: number): { scale: number, glow: number, particles: number, ringSpeed: number, phase: 'idle'|'active'|'error' }`——陈旧（`nowMs - updatedAt > 10_000`）或畸形输入时输出 idle 目标 `{ scale: 0.6, glow: 0.3, particles: 0.18, ringSpeed: 0.35 }`；active 目标基线 `{ scale: 1.0, glow: 0.8, particles: 1.0, ringSpeed: 1.2 }`（心搏在绘制层叠加）。
   - `heartbeatScale(tMs: number, intensity: number): number`——周期 `60_000 / (60 + 60*intensity)`；攻起 ≈120ms 内 0.9→1.1，随后 ≈480ms 指数回落至 0.9，间歇期保持 0.9。
-  - `buildSphere(): { points: [number,number,number][], edges: [number,number,number][] }`——Fibonacci 42 点（单位球面）、近邻边（唯一、无自环）；`buildCore(): points` 18 点（半径 0.08–0.46 球内）；`buildRim(): { angle, radius, alpha }[]` 72 粒（半径 0.77–1.05R，外密内疏）。
+  - `buildSphere(): { points: [number,number,number][], edges: [number,number][] }`——Fibonacci 42 点（单位球面）、近邻边（唯一、无自环）；`buildCore(): [number,number,number][]` 18 点（半径 0.08–0.46 球内）；`buildRim(): { angle, radius, alpha }[]` 72 粒（半径 0.77–1.05R，外密内疏）。
   - `normalizePrefs(raw: unknown): OrbDisplayConfig`——缺失/越界补默认并 clamp（size 32..256，offset 视口内，anchor 枚举外回落 `bottom-right`）。
 
 - [ ] **Step 1: 写失败测试**：陈旧状态 → idle 目标；`intensity: 9`/`active: 'yes'`/`version: 0` → 输出 clamp 且恰好一次 `console.warn`（stub 计数）；`heartbeatScale(120, 0) ≥ 1.05`、`heartbeatScale(600, 0) ≤ 0.92`、攻起段单调升/舒张段单调降（采样断言）；`buildSphere()` 点数 42、每点模长 ≈1、边唯一无自环；`buildRim()` 恰 72 粒且半径 ∈ [0.77, 1.05]。
