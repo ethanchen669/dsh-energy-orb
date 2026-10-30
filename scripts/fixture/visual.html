@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>energy-orb 视觉对照 fixture</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0A0D13; color: #9FB0C8; font-family: -apple-system, "PingFang SC", sans-serif; padding: 24px; }
+  .row { display: flex; gap: 28px; align-items: center; }
+  .cell { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  canvas { width: 300px; height: 300px; mix-blend-mode: screen; }
+  .cap { font-size: 14px; }
+  .cap b { color: #E4EBF6; display: block; text-align: center; }
+  .mockup { margin-top: 24px; }
+  .mockup img { width: 1560px; }
+</style>
+</head>
+<body>
+<div class="row" id="row"></div>
+<div class="mockup"><img id="mock" alt="mockup 对照" src="../../docs/mockups/orb-closeups.png"></div>
+<script type="module">
+import { createOrb } from '../../client/orb-renderer.js';
+import * as THREE from '../../client/vendor/three.module.min.js';
+
+const now = Date.now();
+const CASES = [
+  { id: 'idle',   t: 0,    state: { version: 1, active: false, intensity: 0, phase: 'idle',   updatedAt: now }, cap: '静息 0.6× · 辉光 0.3' },
+  { id: 'attack', t: 3120, state: { version: 1, active: true,  intensity: 1, phase: 'active', updatedAt: now }, cap: '攻起峰值 ≈1.1× · 辉光 1.0' },
+  { id: 'decay',  t: 3360, state: { version: 1, active: true,  intensity: 1, phase: 'active', updatedAt: now }, cap: '舒张回落 ≈0.9× · 辉光 0.55' },
+];
+
+const row = document.getElementById('row');
+const orbs = [];
+for (const c of CASES) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  const cv = document.createElement('canvas');
+  cv.width = 600; cv.height = 600;
+  cv.dataset.orbId = c.id;
+  const cap = document.createElement('div');
+  cap.className = 'cap';
+  cap.innerHTML = `<b>${c.id}</b>${c.cap}`;
+  cell.append(cv, cap);
+  row.append(cell);
+  const orb = createOrb(cv, { reducedMotion: false, THREE, preserveDrawingBuffer: true });
+  orb.setState(c.state);
+  orb.__renderAt(c.t);
+  orbs.push({ id: c.id, orb, cv });
+}
+
+window.__capture = (id) => {
+  const hit = orbs.find((o) => o.id === id);
+  return hit ? hit.cv.toDataURL('image/png') : null;
+};
+window.__ids = CASES.map((c) => c.id);
+window.__ready = true;
+</script>
+</body>
+</html>
