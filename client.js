@@ -12,6 +12,8 @@ window.__ModuleLoader__.load({
     const STATE_URL = '/api/energy-orb/state';
     const RENDERER_URL = '/energy-orb/assets/orb-renderer.js';
     const THREE_URL = '/energy-orb/assets/three.module.min.js';
+    // 测试/fixture 缝：允许覆盖资产 URL（默认走资产路由）
+    const ASSETS = (globalThis.__ENERGY_ORB_ASSETS__) || { renderer: RENDERER_URL, three: THREE_URL };
 
     // ---------- 纯逻辑（__testables 供 node --test 直接测） ----------
     function loadPrefs(storage) {
@@ -76,11 +78,22 @@ window.__ModuleLoader__.load({
         (async () => {
           try {
             const [rendererMod, THREE] = await Promise.all([
-              import(RENDERER_URL),
-              import(THREE_URL),
+              import(ASSETS.renderer),
+              import(ASSETS.three),
             ]);
             if (!stopped && canvasRef.current) {
-              orbRef.current = rendererMod.createOrb(canvasRef.current, { reducedMotion: reduced, THREE });
+              orbRef.current = rendererMod.createOrb(canvasRef.current, {
+                reducedMotion: reduced,
+                THREE,
+                onFallback: () => {
+                  // 上下文二次丢失/恢复超时 → 降级 CSS 球
+                  if (orbRef.current) {
+                    orbRef.current.dispose();
+                    orbRef.current = null;
+                  }
+                  if (!stopped) setFallback(true);
+                },
+              });
             }
           } catch {
             if (!stopped) setFallback(true);   // vendor/WebGL 失败 → CSS 降级球

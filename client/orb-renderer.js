@@ -160,7 +160,38 @@ function shadeVertex(wx, wy, wz, out, outIdx, base, radius) {
   out[outIdx + 2] = base[2] * k;
 }
 
-export function createOrb(canvas, { reducedMotion = false, THREE, preserveDrawingBuffer = false } = {}) {
+/** WebGL 上下文丢失监视：首次丢失 → 尝试恢复（限时）；限时未恢复或二次丢失 → onFinal（降级）。 */
+export function watchContext(canvas, onFinal, { restoreTimeoutMs = 2000, setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
+  let timer = 0;
+  let lostOnce = false;
+  const cleanup = () => {
+    canvas.removeEventListener('webglcontextlost', onLost);
+    canvas.removeEventListener('webglcontextrestored', onRestored);
+    clearTimer(timer);
+  };
+  function onLost(e) {
+    e?.preventDefault?.();
+    if (lostOnce) {
+      cleanup();
+      onFinal();
+      return;
+    }
+    lostOnce = true;
+    timer = setTimer(() => {
+      cleanup();
+      onFinal();
+    }, restoreTimeoutMs);
+  }
+  function onRestored() {
+    clearTimer(timer);
+    lostOnce = false;
+  }
+  canvas.addEventListener('webglcontextlost', onLost);
+  canvas.addEventListener('webglcontextrestored', onRestored);
+  return { dispose: cleanup };
+}
+
+export function createOrb(canvas, { reducedMotion = false, THREE, preserveDrawingBuffer = false, onFallback = null } = {}) {
   if (!THREE) throw new Error('[energy-orb] THREE is required');
   const renderer = new THREE.WebGLRenderer({
     canvas, alpha: true, antialias: true, preserveDrawingBuffer,
@@ -470,6 +501,9 @@ export function createOrb(canvas, { reducedMotion = false, THREE, preserveDrawin
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
     disposables.push({ dispose: () => ro.disconnect() });
+  }
+  if (typeof canvas.addEventListener === 'function') {
+    disposables.push(watchContext(canvas, () => onFallback?.()));
   }
 
   return {
