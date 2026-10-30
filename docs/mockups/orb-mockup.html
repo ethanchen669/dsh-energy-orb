@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>dsh-energy-orb 效果图 mockup</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #06080C; font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; color: #C9D2E0; }
+  figure { width: 1280px; }
+  figcaption {
+    height: 64px; display: flex; align-items: center; padding: 0 28px;
+    background: #0D1118; border-top: 1px solid #1C2430;
+    font-size: 17px; letter-spacing: .02em; color: #9FB0C8;
+  }
+  figcaption b { color: #E8EEF8; font-weight: 600; margin-right: 12px; }
+
+  /* ---------- GUI 表面 ---------- */
+  .gui { width: 1280px; height: 800px; background: #0B0E14; display: flex; overflow: hidden; position: relative; }
+  .sidebar { width: 252px; background: #10141C; border-right: 1px solid #1A212C; padding: 18px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 14px; }
+  .brand-dot { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg,#3B6EF6,#22D3EE); }
+  .brand-name { font-size: 15px; font-weight: 600; color: #E8EEF8; }
+  .new-btn { background: #1A2230; border: 1px solid #263042; border-radius: 10px; padding: 10px 12px; font-size: 13px; color: #B7C4D8; }
+  .sess { background: #141A24; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 5px; }
+  .sess.active { background: #1A2231; border: 1px solid #2A3850; }
+  .sess .t { font-size: 13px; color: #D5DEEC; }
+  .sess .m { font-size: 11px; color: #64748B; }
+  .sess .row { display: flex; align-items: center; gap: 7px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #3B6EF6; }
+  .dot.idle { background: #3A4556; }
+
+  .chat { flex: 1; display: flex; flex-direction: column; position: relative; }
+  .chat-body { flex: 1; padding: 30px 44px; display: flex; flex-direction: column; gap: 22px; }
+  .msg-user { align-self: flex-end; background: #24324A; border-radius: 14px 14px 4px 14px; padding: 12px 16px; font-size: 14px; color: #DCE6F5; max-width: 460px; }
+  .msg-ai { align-self: flex-start; max-width: 620px; display: flex; flex-direction: column; gap: 9px; }
+  .line { height: 11px; border-radius: 6px; background: #1B2431; }
+  .line.w1 { width: 540px; } .line.w2 { width: 460px; } .line.w3 { width: 320px; }
+  .card { background: #121826; border: 1px solid #202B3C; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 9px; }
+  .tool-tag { font-size: 11px; color: #7C93B5; letter-spacing: .04em; }
+  .running { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #93A6C4; }
+  .spinner { width: 15px; height: 15px; border-radius: 50%; border: 2px solid #2B3A54; border-top-color: #4C7CF7; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .scanbar { width: 180px; height: 6px; border-radius: 4px; background: #1B2431; overflow: hidden; position: relative; }
+  .scanbar i { position: absolute; inset: 0; width: 45%; border-radius: 4px; background: linear-gradient(90deg,transparent,#4C7CF7,transparent); animation: scan 1.6s ease-in-out infinite; }
+  @keyframes scan { 0%{ left:-45%; } 100%{ left:100%; } }
+
+  .composer { margin: 0 44px 26px; height: 104px; border-radius: 16px; background: #121826; border: 1px solid #222E42; padding: 16px 18px; display: flex; flex-direction: column; justify-content: space-between; }
+  .ph { font-size: 13.5px; color: #5C6C84; }
+  .composer-row { display: flex; align-items: center; gap: 10px; }
+  .chip { width: 30px; height: 30px; border-radius: 9px; background: #1B2432; }
+  .send { margin-left: auto; width: 34px; height: 34px; border-radius: 10px; background: #2A3A57; }
+
+  /* 能量球：浮动层（shell.overlay），右下角 */
+  .orb-layer { position: absolute; right: 26px; bottom: 22px; z-index: 40; mix-blend-mode: screen; }  /* 黑底光学透明，辉光叠在界面上；blend 要挂在这层（z-index 会造隔离） */
+  .cu-cell canvas { mix-blend-mode: screen; }
+
+  /* ---------- 特写面板 ---------- */
+  .closeups { width: 1620px; height: 560px; background: #0A0D13; display: flex; flex-direction: column; padding: 26px 32px; gap: 18px; }
+  .cu-row { display: flex; gap: 28px; }
+  .cu-cell { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .cu-cap { font-size: 14.5px; color: #8FA2BC; }
+  .cu-cap b { color: #E4EBF6; display: block; font-size: 15.5px; margin-bottom: 3px; text-align: center; }
+  .rhythm { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .rhythm .cap { font-size: 14.5px; color: #8FA2BC; }
+  .rhythm .cap b { color: #E4EBF6; }
+</style>
+</head>
+<body>
+
+<!-- 图1：静息态 -->
+<figure id="fig-idle">
+  <div class="gui">
+    <div class="sidebar">
+      <div class="brand"><div class="brand-dot"></div><div class="brand-name">DeepSeek Harness</div></div>
+      <div class="new-btn">＋ 新会话</div>
+      <div class="sess"><div class="row"><div class="dot idle"></div><div class="t">上游漂移探针排查</div></div><div class="m">2 小时前</div></div>
+      <div class="sess"><div class="row"><div class="dot idle"></div><div class="t">磁盘清理阶段一验收</div></div><div class="m">昨天</div></div>
+      <div class="sess"><div class="row"><div class="dot idle"></div><div class="t">皮肤 token 对照</div></div><div class="m">3 天前</div></div>
+    </div>
+    <div class="chat">
+      <div class="chat-body">
+        <div class="msg-user">把这组断言跑一遍，看看门禁还绿不绿</div>
+        <div class="msg-ai">
+          <div class="card"><div class="tool-tag">BASH</div><div class="line w1"></div><div class="line w2"></div></div>
+          <div class="line w1"></div><div class="line w2"></div><div class="line w3"></div>
+          <div class="running" style="opacity:.45"><div class="dot idle"></div>回合已结束</div>
+        </div>
+      </div>
+      <div class="composer"><div class="ph">发消息，或 / 唤起命令</div><div class="composer-row"><div class="chip"></div><div class="chip"></div><div class="send"></div></div></div>
+    </div>
+    <div class="orb-layer"><canvas id="orb-idle" width="480" height="480" style="width:240px;height:240px"></canvas></div>
+  </div>
+  <figcaption><b>图 1 · 静息态</b>无会话活动：球收缩至 0.6×（≈58px），辉光 0.3，环极慢旋转 —— 右下角低调存在</figcaption>
+</figure>
+
+<!-- 图2：激活态 -->
+<figure id="fig-active">
+  <div class="gui">
+    <div class="sidebar">
+      <div class="brand"><div class="brand-dot"></div><div class="brand-name">DeepSeek Harness</div></div>
+      <div class="new-btn">＋ 新会话</div>
+      <div class="sess active"><div class="row"><div class="dot"></div><div class="t">上游漂移探针排查</div></div><div class="m">正在运行</div></div>
+      <div class="sess"><div class="row"><div class="dot idle"></div><div class="t">磁盘清理阶段一验收</div></div><div class="m">昨天</div></div>
+      <div class="sess"><div class="row"><div class="dot idle"></div><div class="t">皮肤 token 对照</div></div><div class="m">3 天前</div></div>
+    </div>
+    <div class="chat">
+      <div class="chat-body">
+        <div class="msg-user">把这组断言跑一遍，看看门禁还绿不绿</div>
+        <div class="msg-ai">
+          <div class="card"><div class="tool-tag">BASH</div><div class="line w1"></div><div class="line w2"></div></div>
+          <div class="line w1"></div><div class="line w2"></div>
+          <div class="running"><div class="spinner"></div>正在思考…<div class="scanbar"><i></i></div></div>
+        </div>
+      </div>
+      <div class="composer"><div class="ph">发消息，或 / 唤起命令</div><div class="composer-row"><div class="chip"></div><div class="chip"></div><div class="send"></div></div></div>
+    </div>
+    <div class="orb-layer"><canvas id="orb-active" width="480" height="480" style="width:240px;height:240px"></canvas></div>
+  </div>
+  <figcaption><b>图 2 · 激活态（心搏峰值）</b>扫描杠亮起的同一事件：球 0.9–1.1× 心搏循环（快起 120ms / 慢落 480ms），辉光随脉搏涨落，环速与粒子随之提频</figcaption>
+</figure>
+
+<!-- 图3：特写 + 节律 -->
+<figure id="fig-closeup" style="width:1620px">
+  <div class="closeups">
+    <div class="cu-row">
+      <div class="cu-cell"><canvas id="cu-idle" width="600" height="600" style="width:300px;height:300px"></canvas>
+        <div class="cu-cap"><b>静息</b>0.6× · 辉光 0.3 · 慢呼吸</div></div>
+      <div class="cu-cell"><canvas id="cu-attack" width="600" height="600" style="width:300px;height:300px"></canvas>
+        <div class="cu-cap"><b>攻起峰值</b>1.1× · 辉光 1.0 · 粒子 1.0</div></div>
+      <div class="cu-cell"><canvas id="cu-decay" width="600" height="600" style="width:300px;height:300px"></canvas>
+        <div class="cu-cap"><b>舒张回落</b>0.9× · 辉光 0.55 · 粒子 0.45</div></div>
+      <div class="rhythm">
+        <div class="cap"><b>心搏节律</b>（缩放随时间）</div>
+        <svg width="560" height="200" viewBox="0 0 560 200">
+          <line x1="30" y1="170" x2="545" y2="170" stroke="#253042" stroke-width="1.5"/>
+          <line x1="30" y1="30" x2="30" y2="170" stroke="#253042" stroke-width="1.5"/>
+          <path d="M30,140 L60,140 C68,140 72,44 82,44 C92,44 96,140 110,140 C130,140 150,124 190,128 C240,132 270,140 300,140 L330,140 C338,140 342,44 352,44 C362,44 366,140 380,140 C400,140 420,124 460,128 C510,132 535,140 545,140"
+                fill="none" stroke="#4C7CF7" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M30,140 L60,140 C68,140 72,44 82,44 C92,44 96,140 110,140 C130,140 150,124 190,128 C240,132 270,140 300,140 L330,140 C338,140 342,44 352,44 C362,44 366,140 380,140 C400,140 420,124 460,128 C510,132 535,140 545,140"
+                fill="none" stroke="#22D3EE" stroke-width="2.5" stroke-linecap="round" opacity=".35" transform="translate(0,10)"/>
+          <text x="88" y="26" fill="#7C93B5" font-size="12" text-anchor="middle">攻起 120ms</text>
+          <text x="185" y="112" fill="#7C93B5" font-size="12" text-anchor="middle">舒张 480ms</text>
+          <text x="300" y="162" fill="#5C6C84" font-size="12" text-anchor="middle">间歇</text>
+          <text x="516" y="162" fill="#5C6C84" font-size="12" text-anchor="end">≈60 BPM · intensity 升高则提频</text>
+        </svg>
+        <div class="cap" style="font-size:13px;color:#64748B">材质（照参考图层级，3D 化）：网络球 —— 透视近大远小 + 深度渐变 + 定向光 + 倾斜轨道环；密度：边缘点带（密）＋ 球核（聚）＋ 球面疏网（少），防密集恐惧 ＋ HUD 同心环（异速旋转）＋ 粒子；状态切换指数平滑（τ≈300ms），不硬切</div>
+      </div>
+    </div>
+  </div>
+  <figcaption><b>图 3 · 材质特写与心搏节律</b>目标材质层级：线框网络球 → HUD 同心环 → 粒子（与参考图的层级一一对应）</figcaption>
+</figure>
+
+<script>
+/* ===== 技术流能量球（照参考图层级：线框网络球 → HUD 同心环 → 粒子）=====
+   漠视图工具：Canvas2D + additive；最终产品同一层级用 Three.js（Line/Points/Ring）实现 */
+function hash(i){ const x = Math.sin(i * 127.1) * 43758.5453; return x - Math.floor(x); }
+
+// 球面点阵（Fibonacci）+ 近邻连线
+const SPHERE = (() => {
+  const pts = [], n = 42, gr = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < n; i++) {
+    const y = 1 - (i / (n - 1)) * 2, r = Math.sqrt(Math.max(0, 1 - y * y)), th = gr * i;
+    pts.push([Math.cos(th) * r, y, Math.sin(th) * r]);
+  }
+  return pts;
+})();
+const EDGES = (() => {
+  const e = [];
+  for (let i = 0; i < SPHERE.length; i++) for (let j = i + 1; j < SPHERE.length; j++) {
+    const a = SPHERE[i], b = SPHERE[j];
+    const d = Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]);
+    if (d < 0.55) e.push([i, j]);
+  }
+  return e;
+})();
+
+function drawTechOrb(id, { dia, glow, particles, time, spin }) {
+  const cv = document.getElementById(id);
+  const ctx = cv.getContext('2d');
+  const W = cv.clientWidth, H = cv.clientHeight;
+  const S = cv.width / W;                     // 2x 位图，CSS 尺寸里作画
+  ctx.setTransform(S, 0, 0, S, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  ctx.save();
+  ctx.translate(W/2, H/2);
+  ctx.globalCompositeOperation = 'lighter';
+
+  const R = dia / 2;
+
+  // 1) 核心辉光（脉搏由 glow 驱动）
+  const g0 = ctx.createRadialGradient(0, 0, R*0.1, 0, 0, R*1.9);
+  g0.addColorStop(0, `rgba(60,170,255,${0.16*glow})`);
+  g0.addColorStop(0.55, `rgba(40,120,255,${0.07*glow})`);
+  g0.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g0;
+  ctx.fillRect(-W/2, -H/2, W, H);
+
+  // 2) 网络球：透视投影 + 连续深度渐变 + 定向光（3D 化）；密度结构：球面疏 + 球核聚 + 边缘点带密
+  const a = time * spin, ca = Math.cos(a), sa = Math.sin(a);
+  const tilt = 0.42, ct = Math.cos(tilt), st = Math.sin(tilt);
+  const LX = -0.55, LY = -0.75, LZ = 0.42;      // 定向光：左上前方
+  const toView = (x, y, z) => {
+    const x1 = x*ca - z*sa, z1 = x*sa + z*ca;
+    return [x1, y*ct - z1*st, y*st + z1*ct];    // 单位向量，旋转保长
+  };
+  const proj1 = (v) => { const k = 1 + v[2]*0.16; return [v[0]*R*k, v[1]*R*k, v[2]]; };
+  const view = SPHERE.map(p => toView(p[0], p[1], p[2]));
+  const proj = view.map(proj1);
+  const depth = view.map(v => Math.pow(Math.max(0, (v[2]+1)/2), 1.7));
+  const shade = view.map(v => 0.60 + 0.40*Math.max(0, v[0]*LX + v[1]*LY + v[2]*LZ));
+  ctx.lineCap = 'round';
+  // 2a 球面疏网：节点少、连线短、整体压暗（"球面上点少"）；深度渐变代替前后二值
+  for (const [i, j] of EDGES) {
+    const A = proj[i], B = proj[j];
+    const dep = (depth[i]+depth[j])/2, sh = (shade[i]+shade[j])/2;
+    ctx.strokeStyle = `rgba(110,215,255,${(0.05 + 0.30*dep) * sh * (0.55 + 0.45*glow)})`;
+    ctx.lineWidth = 0.55 + 0.55*dep;
+    ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.stroke();
+  }
+  for (let i = 0; i < proj.length; i++) {
+    const p = proj[i], dep = depth[i], sh = shade[i];
+    const r = 0.9 + 1.4*dep;
+    const al = (0.10 + 0.85*dep) * sh * (0.5 + 0.5*glow);
+    const g = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], r*3.2);
+    g.addColorStop(0, `rgba(215,248,255,${al})`);
+    g.addColorStop(0.35, `rgba(110,215,255,${al*0.55})`);
+    g.addColorStop(1, 'rgba(60,150,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(p[0], p[1], r*3.2, 0, Math.PI*2); ctx.fill();
+  }
+  // 2b 球核（聚）：亮核点加密 + 短连线，随球旋转（"球核出点"，核心要亮）
+  const CORE = Array.from({ length: 18 }, (_, i) => {
+    const th = hash(i*9.2) * Math.PI * 2, ph = Math.acos(2*hash(i*3.7) - 1);
+    const rr = 0.08 + hash(i*5.9) * 0.38;
+    return [Math.sin(ph)*Math.cos(th)*rr, Math.sin(ph)*Math.sin(th)*rr, Math.cos(ph)*rr];
+  });
+  const cview = CORE.map(p => toView(p[0], p[1], p[2]));
+  const cproj = cview.map(proj1);
+  const cdep = cview.map(v => Math.pow(Math.max(0, (v[2]+0.5)/1.5), 1.4));
+  const cshade = cview.map(v => 0.66 + 0.34*Math.max(0, v[0]*LX + v[1]*LY + v[2]*LZ));
+  for (let i = 0; i < cproj.length; i++) for (let j = i + 1; j < cproj.length; j++) {
+    const A = cproj[i], B = cproj[j];
+    if (Math.hypot(A[0]-B[0], A[1]-B[1]) < R*0.30) {
+      const dep = (cdep[i]+cdep[j])/2, sh = (cshade[i]+cshade[j])/2;
+      ctx.strokeStyle = `rgba(150,225,255,${(0.08 + 0.16*dep) * sh * (0.55 + 0.45*glow)})`;
+      ctx.lineWidth = 0.6 + 0.5*dep;
+      ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.stroke();
+    }
+  }
+  for (let i = 0; i < cproj.length; i++) {
+    const p = cproj[i], dep = cdep[i], sh = cshade[i];
+    const r = 1.3 + 1.5*dep;
+    const al = (0.35 + 0.65*dep) * sh;
+    const g = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], r*3.6);
+    g.addColorStop(0, `rgba(225,250,255,${al})`);
+    g.addColorStop(0.35, `rgba(120,220,255,${al*0.55})`);
+    g.addColorStop(1, 'rgba(60,150,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(p[0], p[1], r*3.6, 0, Math.PI*2); ctx.fill();
+  }
+  // 2c 边缘点带（密）：贴剪影的点环，外密内疏，慢速漂移（"边缘点多"）
+  for (let i = 0; i < 72; i++) {
+    const th = (i / 72) * Math.PI * 2 + hash(i*2.7) * 0.09 + time * 0.05;
+    const u = hash(i*4.1);
+    const rr = R * (1.05 - u*u*0.28);
+    const x = Math.cos(th) * rr, y = Math.sin(th) * rr;
+    const al = (0.22 + 0.5 * hash(i*6.3)) * (0.35 + 0.65 * glow);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 3.2);
+    g.addColorStop(0, `rgba(190,235,255,${al})`);
+    g.addColorStop(0.4, `rgba(110,205,255,${al*0.45})`);
+    g.addColorStop(1, 'rgba(60,150,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, 3.2, 0, Math.PI*2); ctx.fill();
+  }
+  // 2d 倾斜轨道环（陀螺环）：3D 圆环投影成椭圆弧，前弧亮、后弧暗 —— 最强的深度线索
+  function orbit(radius, tiltRad, spinAng, alpha) {
+    const c2 = Math.cos(tiltRad), s2 = Math.sin(tiltRad), cs = Math.cos(spinAng), ss = Math.sin(spinAng);
+    const N = 72;
+    const pt = (ang) => {
+      const x = Math.cos(ang)*radius, y = Math.sin(ang)*radius*c2, z = Math.sin(ang)*radius*s2;
+      return [x*cs - y*ss, x*ss + y*cs, z];
+    };
+    for (let i = 0; i < N; i++) {
+      const P0 = pt((i/N)*Math.PI*2), P1 = pt(((i+1.05)/N)*Math.PI*2);
+      const dep = Math.pow(Math.max(0, (P0[2]+P1[2])/2/radius + 1) / 2, 1.8);
+      ctx.strokeStyle = `rgba(150,225,255,${(0.04 + 0.40*dep) * alpha * (0.5 + 0.5*glow)})`;
+      ctx.lineWidth = 0.8 + 0.8*dep;
+      ctx.beginPath(); ctx.moveTo(P0[0], P0[1]); ctx.lineTo(P1[0], P1[1]); ctx.stroke();
+    }
+  }
+  orbit(R*1.34, 1.12,  time*0.16 + 0.5, 0.9);
+  orbit(R*1.12, 0.50, -time*0.11, 0.7);
+
+  // 3) HUD 同心环（异速旋转；glow 控亮度）
+  function ring(radius, rot, segs, ticks, dashOn, alpha) {
+    ctx.save(); ctx.rotate(rot);
+    for (const [s0, s1] of segs) {
+      const pass = (w, al) => { ctx.lineWidth = w; ctx.strokeStyle = `rgba(120,210,255,${al*alpha})`;
+        ctx.beginPath(); ctx.arc(0, 0, radius, s0, s1); ctx.stroke(); };
+      pass(4.5, 0.10*glow + 0.03); pass(1.3, 0.55*glow + 0.2);
+    }
+    if (dashOn) {
+      ctx.setLineDash(dashOn);
+      ctx.lineWidth = 1.1; ctx.strokeStyle = `rgba(120,210,255,${(0.35*glow+0.14)*alpha})`;
+      ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    for (let k = 0; k < ticks; k++) {
+      const th = (k / ticks) * Math.PI * 2;
+      const long = k % 4 === 0, L = long ? 7 : 3.6;
+      const c = Math.cos(th), s = Math.sin(th);
+      ctx.lineWidth = long ? 1.5 : 1;
+      ctx.strokeStyle = `rgba(190,235,255,${(long ? 0.75 : 0.4) * alpha * (0.4 + 0.6*glow)})`;
+      ctx.beginPath();
+      ctx.moveTo(c*radius, s*radius); ctx.lineTo(c*(radius+L), s*(radius+L));
+      ctx.stroke();
+    }
+    for (let k = 0; k < 10; k++) {           // 数据块（切向小电路段）
+      const th = hash(k*7 + radius) * Math.PI * 2;
+      const w = 6 + hash(k*13) * 14, h = 2.2;
+      ctx.save(); ctx.rotate(th);
+      ctx.fillStyle = `rgba(140,220,255,${(0.5*glow + 0.22) * alpha})`;
+      ctx.fillRect(radius - h/2, -w/2, h, w);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+  ring(R*1.22,  time*0.20, [[0, 2.2], [2.9, 4.1], [4.8, 6.0]], 28, [3, 6], 1.0);
+  ring(R*1.46, -time*0.13, [[0.3, 1.5], [2.2, 3.0], [3.9, 4.6], [5.4, 6.1]], 18, [1, 10], 0.85);
+  ring(R*1.70,  time*0.07, [[1.0, 2.6], [4.0, 5.2]], 44, [2, 14], 0.6);
+
+  // 4) 粒子（少量暖色火花点缀，照参考图）
+  for (let i = 0; i < 26; i++) {
+    const th = hash(i*3.1) * Math.PI * 2 + time * 0.06 * (hash(i*1.7) > 0.5 ? 1 : -1);
+    const rr = R * (1.12 + ((hash(i*5.3) + time*0.02) % 1) * 1.15);
+    const fade = 1 - (rr/R - 1.12) / 1.15;
+    const warm = i % 6 === 0;
+    const al = Math.max(0, fade) * 0.85 * particles;
+    const x = Math.cos(th)*rr, y = Math.sin(th)*rr*0.92;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 4);
+    g.addColorStop(0, warm ? `rgba(255,190,120,${al})` : `rgba(170,230,255,${al})`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+window.__renderAll = function(){
+  drawTechOrb('orb-idle',   { dia: 58,  glow: 0.30, particles: 0.18, time: 0.0, spin: 0.35 });
+  drawTechOrb('orb-active', { dia: 106, glow: 1.0,  particles: 1.0,  time: 3.2, spin: 1.2 });
+  drawTechOrb('cu-idle',    { dia: 116, glow: 0.30, particles: 0.18, time: 0.6, spin: 0.35 });
+  drawTechOrb('cu-attack',  { dia: 160, glow: 1.0,  particles: 1.0,  time: 3.2, spin: 1.2 });
+  drawTechOrb('cu-decay',   { dia: 138, glow: 0.55, particles: 0.45, time: 4.4, spin: 0.8 });
+};
+window.__renderAll();
+</script>
+</body>
+</html>

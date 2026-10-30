@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- 原创图形：球核 + 同心 HUD 环（与插件自身视觉语言一致，无第三方素材） -->
+  <circle cx="32" cy="32" r="30" fill="#0B1220"/>
+  <circle cx="32" cy="32" r="27" fill="none" stroke="#2B4A7A" stroke-width="1"/>
+  <circle cx="32" cy="32" r="22" fill="none" stroke="#4C8DF6" stroke-width="1.2" stroke-dasharray="4 8" opacity="0.6"/>
+  <circle cx="32" cy="32" r="15" fill="none" stroke="#4C8DF6" stroke-width="1.6" stroke-dasharray="10 6" opacity="0.85"/>
+  <circle cx="32" cy="32" r="8" fill="#7CC4FF"/>
+  <circle cx="32" cy="32" r="8" fill="none" stroke="#B8E2FF" stroke-width="1.5" opacity="0.8"/>
+</svg>
