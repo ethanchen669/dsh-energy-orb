@@ -65,6 +65,16 @@ try {
 
   await page.locator('body').screenshot({ path: join(OUT, 'compare.png') });
   console.log('✓', join(OUT, 'compare.png'), '（上排=真渲染器三态，下排=mockup 对照物）');
+
+  // A7：生命周期（真 DOM 数 [data-dsh-energy-orb-root]，apply→dispose→apply 两轮）
+  await page.goto(`http://127.0.0.1:${port}/scripts/fixture/lifecycle.html`);
+  await page.waitForFunction(() => window.__lifecycleReady === true, { timeout: 15_000 });
+  const lc = await page.evaluate(() => window.__results);
+  const expected = { afterMount1: 1, afterUnmount1: 0, afterMount2: 1, afterUnmount2: 0 };
+  for (const [k, v] of Object.entries(expected)) {
+    if (lc[k] !== v) throw new Error(`A7 生命周期 ${k}: 期望 ${v}，实际 ${lc[k]}（${JSON.stringify(lc)}）`);
+  }
+  console.log('✓ A7 生命周期：mount/unmount 两轮根元素计数 1/0/1/0', JSON.stringify(lc));
 } finally {
   await browser.close();
   server.close();

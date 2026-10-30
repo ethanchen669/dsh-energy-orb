@@ -14,6 +14,14 @@ window.__ModuleLoader__.load({
     const THREE_URL = '/energy-orb/assets/three.module.min.js';
     // 测试/fixture 缝：允许覆盖资产 URL（默认走资产路由）
     const ASSETS = (globalThis.__ENERGY_ORB_ASSETS__) || { renderer: RENDERER_URL, three: THREE_URL };
+    // 降级警示：每类恰一次（设计「错误与失败模式」）
+    let warned = false;
+    const warnOnce = (msg) => {
+      if (!warned) {
+        warned = true;
+        console.warn(msg);
+      }
+    };
 
     // ---------- 纯逻辑（__testables 供 node --test 直接测） ----------
     function loadPrefs(storage) {
@@ -87,6 +95,7 @@ window.__ModuleLoader__.load({
                 THREE,
                 onFallback: () => {
                   // 上下文二次丢失/恢复超时 → 降级 CSS 球
+                  warnOnce('[energy-orb] webgl degraded to CSS fallback');
                   if (orbRef.current) {
                     orbRef.current.dispose();
                     orbRef.current = null;
@@ -96,6 +105,7 @@ window.__ModuleLoader__.load({
               });
             }
           } catch {
+            warnOnce('[energy-orb] renderer/vendor load failed; CSS fallback');
             if (!stopped) setFallback(true);   // vendor/WebGL 失败 → CSS 降级球
           }
           const loop = async () => {

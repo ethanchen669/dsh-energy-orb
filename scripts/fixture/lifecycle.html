@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>energy-orb 生命周期 fixture（A7）</title></head>
+<body style="background:#0A0D13">
+<div id="mount"></div>
+<script>
+// 迷你 React 桩 + 迷你 vnode→DOM 渲染器：只为把 client.js 的真实组件接进真 DOM 数根元素
+window.__ModuleLoader__ = { load(spec) { window.__spec = spec; } };
+</script>
+<script src="/client.js"></script>
+<script type="module">
+import * as React from './react-delegate.mjs';
+
+const requireShim = (name) => {
+  if (name === 'react') return React.delegate;
+  throw new Error(`unexpected require: ${name}`);
+};
+const mod = window.__spec.factory(requireShim);
+
+let OrbComponent = null;
+mod.apply({
+  slots: {
+    inject(slot, cb) { return cb(); },
+    register(opts, component) {
+      if (opts.name !== 'shell.overlay' || opts.id !== 'dsh-energy-orb') {
+        throw new Error(`注册形状不符: ${JSON.stringify(opts)}`);
+      }
+      OrbComponent = component;
+      return () => {};
+    },
+  },
+});
+
+const container = document.getElementById('mount');
+const results = {};
+
+function mount() {
+  React.beginRender();
+  const tree = OrbComponent();
+  container.replaceChildren(React.toDom(tree));
+}
+function unmount() {
+  React.runCleanups(true);          // 二次调用不抛（幂等）
+  container.replaceChildren();
+}
+function countRoots() {
+  return document.querySelectorAll('[data-dsh-energy-orb-root]').length;
+}
+
+mount();
+results.afterMount1 = countRoots();
+unmount();
+results.afterUnmount1 = countRoots();
+mount();
+results.afterMount2 = countRoots();
+unmount();
+results.afterUnmount2 = countRoots();
+
+window.__results = results;
+window.__lifecycleReady = true;
+</script>
+</body>
+</html>

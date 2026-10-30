@@ -134,18 +134,26 @@ factory.apply({
 });
 assert.equal(typeof OrbComponent, 'function', '应捕获 shell.overlay 组件');
 
-test('vendor 加载失败 → CSS 降级球挂出；单次挂载恰一个根元素', async () => {
-  const stub = makeReactStub();
-  stubReactHolder.current = stub.React;
-  const tree = stub.render();
-  assert.equal(tree.props['data-dsh-energy-orb-root'], '', '根元素应带 data-dsh-energy-orb-root');
-  assert.equal(tree.children.length, 1, '恰一个子节点');
-  // effect 已跑（stub 的 useEffect 同步执行），import 失败 → setFallback(true)
-  await new Promise((r) => setTimeout(r, 30));     // 放行 import rejection 的微任务
-  const tree2 = stub.render();
-  const child = tree2.children[0];
-  assert.equal(child.props['data-dsh-energy-orb-fallback'], '', '失败后应渲染 CSS 降级球');
-  assert.equal(child.type, 'div');
-  // 清理：effect cleanup 停轮询 + 释放（二次调用不抛）
-  for (const c of stub.cleanups) { c(); c(); }
+test('vendor 加载失败 → CSS 降级球挂出；单次挂载恰一个根元素；warn 恰一次', async () => {
+  const warns = [];
+  const origWarn = console.warn;
+  console.warn = (m) => warns.push(m);
+  try {
+    const stub = makeReactStub();
+    stubReactHolder.current = stub.React;
+    const tree = stub.render();
+    assert.equal(tree.props['data-dsh-energy-orb-root'], '', '根元素应带 data-dsh-energy-orb-root');
+    assert.equal(tree.children.length, 1, '恰一个子节点');
+    // effect 已跑（stub 的 useEffect 同步执行），import 失败 → setFallback(true)
+    await new Promise((r) => setTimeout(r, 30));     // 放行 import rejection 的微任务
+    const tree2 = stub.render();
+    const child = tree2.children[0];
+    assert.equal(child.props['data-dsh-energy-orb-fallback'], '', '失败后应渲染 CSS 降级球');
+    assert.equal(child.type, 'div');
+    assert.equal(warns.length, 1, `降级 warn 应恰一次，实际 ${warns.length}`);
+    // 清理：effect cleanup 停轮询 + 释放（二次调用不抛）
+    for (const c of stub.cleanups) { c(); c(); }
+  } finally {
+    console.warn = origWarn;
+  }
 });
