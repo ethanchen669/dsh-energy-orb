@@ -6,6 +6,10 @@
 <script>
 // 迷你 React 桩 + 迷你 vnode→DOM 渲染器：只为把 client.js 的真实组件接进真 DOM 数根元素
 window.__ModuleLoader__ = { load(spec) { window.__spec = spec; } };
+// A6：未捕获异常计数（降级路径不许炸页）
+window.__uncaught = 0;
+window.addEventListener('error', () => window.__uncaught++);
+window.addEventListener('unhandledrejection', () => window.__uncaught++);
 </script>
 <script src="/client.js"></script>
 <script type="module">
@@ -57,6 +61,7 @@ unmount();
 results.afterUnmount2 = countRoots();
 
 window.__results = results;
+window.__results.uncaught = window.__uncaught;
 window.__lifecycleReady = true;
 </script>
 </body>

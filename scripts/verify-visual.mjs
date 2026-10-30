@@ -70,7 +70,7 @@ try {
   await page.goto(`http://127.0.0.1:${port}/scripts/fixture/lifecycle.html`);
   await page.waitForFunction(() => window.__lifecycleReady === true, { timeout: 15_000 });
   const lc = await page.evaluate(() => window.__results);
-  const expected = { afterMount1: 1, afterUnmount1: 0, afterMount2: 1, afterUnmount2: 0 };
+  const expected = { afterMount1: 1, afterUnmount1: 0, afterMount2: 1, afterUnmount2: 0, uncaught: 0 };
   for (const [k, v] of Object.entries(expected)) {
     if (lc[k] !== v) throw new Error(`A7 生命周期 ${k}: 期望 ${v}，实际 ${lc[k]}（${JSON.stringify(lc)}）`);
   }
