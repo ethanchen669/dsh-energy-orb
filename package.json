@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "repository": { "type": "git", "url": "git+https://github.com/ethanchen669/dsh-energy-orb.git" },
+  "homepage": "https://github.com/ethanchen669/dsh-energy-orb#readme",
+  "bugs": { "url": "https://github.com/ethanchen669/dsh-energy-orb/issues" },
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
