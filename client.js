@@ -69,6 +69,7 @@ window.__ModuleLoader__.load({
     function OrbComponent() {
       const [prefs, setPrefs] = React.useState(() => loadPrefs(window.localStorage));
       const [fallback, setFallback] = React.useState(false);
+      const [lastState, setLastState] = React.useState(null);
       const canvasRef = React.useRef(null);
       const orbRef = React.useRef(null);
       const prefsRef = React.useRef(prefs);
@@ -111,8 +112,11 @@ window.__ModuleLoader__.load({
           const loop = async () => {
             if (stopped) return;
             const ms = await pollOnce(window.fetch.bind(window), (state) => {
-              if (!stopped && orbRef.current) orbRef.current.setState(state);
+              if (stopped) return;
+              setLastState(state);
+              if (orbRef.current) orbRef.current.setState(state);
             });
+            if (stopped) return;
             timer = window.setTimeout(loop, ms);
           };
           loop();
@@ -163,14 +167,38 @@ window.__ModuleLoader__.load({
         display: prefs.visible ? 'block' : 'none',
       };
 
+      const active = !!(lastState && lastState.active);
       return h('div', {
         'data-dsh-energy-orb-root': '',
         className: 'energyOrb-root',
         style,
         onPointerDown,
       }, fallback
-        ? h('div', { className: 'energyOrb-fallback', 'data-dsh-energy-orb-fallback': '' })
-        : h('canvas', { ref: canvasRef, 'data-dsh-energy-orb-canvas': '' }));
+        ? [
+            h('div', {
+              key: 'fallback',
+              className: 'energyOrb-fallback',
+              'data-dsh-energy-orb-fallback': '',
+              style: {
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                background: 'radial-gradient(circle at 38% 32%, rgba(150,210,255,.95), rgba(76,141,246,.55) 45%, rgba(24,48,96,.18) 72%, transparent 78%)',
+                boxShadow: '0 0 26px rgba(76,141,246,.45)',
+                transform: `scale(${active ? 1 : 0.6})`,
+                opacity: active ? 1 : 0.55,
+                transition: 'transform 300ms ease, opacity 300ms ease',
+                animation: 'energyOrbBreath 10s ease-in-out infinite',
+              },
+            }),
+            h('style', { key: 'fallbackStyle' },
+              '@keyframes energyOrbBreath{0%,100%{filter:brightness(.85)}50%{filter:brightness(1.12)}}'),
+          ]
+        : h('canvas', {
+            ref: canvasRef,
+            'data-dsh-energy-orb-canvas': '',
+            style: { width: '100%', height: '100%', display: 'block' },
+          }));
     }
 
     return {

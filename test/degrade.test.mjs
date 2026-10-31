@@ -74,7 +74,7 @@ globalThis.window = {
     setItem: (k, v) => mem.set(k, v),
   },
   matchMedia: () => ({ matches: false }),
-  fetch: async () => ({ ok: true, json: async () => ({ version: 1, active: false, intensity: 0, phase: 'idle', updatedAt: Date.now() }) }),
+  fetch: async () => ({ ok: true, json: async () => ({ version: 1, active: true, intensity: 1, phase: 'active', updatedAt: Date.now() }) }),
   setTimeout: (fn, ms) => setTimeout(fn, ms),
   clearTimeout: (t) => clearTimeout(t),
   addEventListener() {},
@@ -88,7 +88,7 @@ function makeReactStub() {
   let stateIdx = 0, refIdx = 0;
   const states = [], refs = [];
   const React = {
-    createElement: (type, props, ...children) => ({ type, props: props || {}, children }),
+    createElement: (type, props, ...children) => ({ type, props: props || {}, children: children.flat() }),
     useState: (init) => {
       const i = stateIdx++;
       if (!(i in states)) states[i] = typeof init === 'function' ? init() : init;
@@ -138,22 +138,26 @@ test('vendor 加载失败 → CSS 降级球挂出；单次挂载恰一个根元�
   const warns = [];
   const origWarn = console.warn;
   console.warn = (m) => warns.push(m);
+  const stub = makeReactStub();
+  stubReactHolder.current = stub.React;
   try {
-    const stub = makeReactStub();
-    stubReactHolder.current = stub.React;
     const tree = stub.render();
     assert.equal(tree.props['data-dsh-energy-orb-root'], '', '根元素应带 data-dsh-energy-orb-root');
     assert.equal(tree.children.length, 1, '恰一个子节点');
+    assert.equal(tree.children[0].props.style.width, '100%', 'canvas 应拉伸容器（不可见 bug 的回归钉）');
     // effect 已跑（stub 的 useEffect 同步执行），import 失败 → setFallback(true)
     await new Promise((r) => setTimeout(r, 30));     // 放行 import rejection 的微任务
     const tree2 = stub.render();
     const child = tree2.children[0];
     assert.equal(child.props['data-dsh-energy-orb-fallback'], '', '失败后应渲染 CSS 降级球');
     assert.equal(child.type, 'div');
+    assert.match(String(child.props.style.background), /radial-gradient/, '降级球必须可见（带渐变背景）');
+    assert.equal(child.props.style.borderRadius, '50%');
+    assert.match(String(child.props.style.transform), /scale\(1/, '降级球应按状态缩放（active=1）');
     assert.equal(warns.length, 1, `降级 warn 应恰一次，实际 ${warns.length}`);
-    // 清理：effect cleanup 停轮询 + 释放（二次调用不抛）
-    for (const c of stub.cleanups) { c(); c(); }
   } finally {
+    // 清理放 finally：断言失败也不许留下轮询定时器挂住进程（二次调用不抛 = 幂等探针）
+    for (const c of stub.cleanups) { c(); c(); }
     console.warn = origWarn;
   }
 });
