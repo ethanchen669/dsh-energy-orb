@@ -161,3 +161,26 @@ test('vendor 加载失败 → CSS 降级球挂出；单次挂载恰一个根元�
     console.warn = origWarn;
   }
 });
+
+test('拖拽偏移方向：右拖球向右（right 减小）、下拖球向下（bottom 减小），calc 语法合法', () => {
+  const key = 'energy-orb.display';
+  const run = (offset, anchor = 'bottom-right') => {
+    mem.set(key, JSON.stringify({ size: 96, anchor, offset }));
+    const stub = makeReactStub();
+    stubReactHolder.current = stub.React;
+    try {
+      return stub.render().props.style;
+    } finally {
+      for (const c of stub.cleanups) { try { c(); c(); } catch { /* 幂等 */ } }
+      mem.delete(key);
+    }
+  };
+  const s1 = run({ x: 40, y: 10 });
+  assert.equal(s1.right, 'calc(26px - 40px)', '右拖（offset.x+）球应向右：right 减小');
+  assert.equal(s1.bottom, 'calc(22px - 10px)', '下拖（offset.y+）球应向下：bottom 减小');
+  const s2 = run({ x: -30, y: -5 });
+  assert.equal(s2.right, 'calc(26px + 30px)', '左拖（offset.x-）球应向左：right 增大');
+  assert.equal(s2.bottom, 'calc(22px + 5px)', '上拖（offset.y-）球应向上：bottom 增大');
+  const s3 = run({ x: 40, y: 10 }, 'bottom-left');
+  assert.equal(s3.left, 'calc(26px + 40px)', '左锚点：右拖 left 增大');
+});

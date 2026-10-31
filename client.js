@@ -154,11 +154,18 @@ window.__ModuleLoader__.load({
         if (!moved && orbRef.current && orbRef.current.pulse) orbRef.current.pulse();
       };
 
+      // 拖拽 offset 语义：右拖 x+ → 球向右；下拖 y+ → 球向下。
+      // right 锚点「向右」= right 减小；left 锚点「向右」= left 增大；bottom「向下」= bottom 减小。
+      // calc 用显式 +/- 连接绝对值（`calc(26px + -40px)` 语法不可靠）。
+      const calcShift = (base, delta, decreaseWhenPositive) => {
+        const decrease = decreaseWhenPositive ? delta >= 0 : delta < 0;
+        return `calc(${base}px ${decrease ? '-' : '+'} ${Math.abs(delta)}px)`;
+      };
       const style = {
         position: 'fixed',
-        right: prefs.anchor === 'bottom-right' ? `calc(26px + ${prefs.offset.x}px)` : 'auto',
-        left: prefs.anchor === 'bottom-left' ? `calc(26px + ${prefs.offset.x}px)` : 'auto',
-        bottom: `calc(22px + ${-prefs.offset.y}px)`,
+        right: prefs.anchor === 'bottom-right' ? calcShift(26, prefs.offset.x, true) : 'auto',
+        left: prefs.anchor === 'bottom-left' ? calcShift(26, prefs.offset.x, false) : 'auto',
+        bottom: calcShift(22, prefs.offset.y, true),
         width: `${prefs.size * 2}px`,
         height: `${prefs.size * 2}px`,
         zIndex: 40,

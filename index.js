@@ -7,16 +7,20 @@ import { registerAssetRoute } from './host/asset-route.js';
 
 const packageDir = dirname(fileURLToPath(import.meta.url));
 
-export function apply(ctx) {
+export function apply(ctx, config) {
   const projector = createProjector();
+  // 事件是 Context 核心面（fly-llm-recover 同款直订）；**服务必须经 ctx.inject 获取**——
+  // 裸 ctx.webServer 是 undefined ⇒ apply 抛 ⇒ fiber failed（list_plugins 实测过）。
   const offStatus = ctx.on('api-session/status', (sessionId, running) => {
     projector.noteStatus(String(sessionId), !!running);
   });
-  const disposeState = registerStateRoute(ctx, projector);
-  const disposeAssets = registerAssetRoute(ctx, packageDir);
-  ctx.effect(() => {
-    disposeState();
-    disposeAssets();
-    offStatus();
+  ctx.effect(() => offStatus());
+  ctx.inject(['webServer'], (hostCtx) => {
+    const disposeState = registerStateRoute(hostCtx, projector);
+    const disposeAssets = registerAssetRoute(hostCtx, packageDir);
+    ctx.effect(() => {
+      disposeState();
+      disposeAssets();
+    });
   });
 }
