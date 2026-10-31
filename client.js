@@ -104,6 +104,8 @@ window.__ModuleLoader__.load({
                   if (!stopped) setFallback(true);
                 },
               });
+              // rAF 循环的唯一入口：不 start() 一帧都不画（表现=永远静止）
+              orbRef.current.start();
             }
           } catch {
             warnOnce('[energy-orb] renderer/vendor load failed; CSS fallback');
@@ -148,10 +150,10 @@ window.__ModuleLoader__.load({
           window.removeEventListener('pointermove', move);
           window.removeEventListener('pointerup', up);
           if (moved) savePrefs(window.localStorage, prefsRef.current);
+          else if (orbRef.current && orbRef.current.pulse) orbRef.current.pulse();   // 纯点击才充能，拖拽不算
         };
         window.addEventListener('pointermove', move);
         window.addEventListener('pointerup', up);
-        if (!moved && orbRef.current && orbRef.current.pulse) orbRef.current.pulse();
       };
 
       // 拖拽 offset 语义：右拖 x+ → 球向右；下拖 y+ → 球向下。

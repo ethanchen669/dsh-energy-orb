@@ -184,3 +184,42 @@ test('拖拽偏移方向：右拖球向右（right 减小）、下拖球向下�
   const s3 = run({ x: 40, y: 10 }, 'bottom-left');
   assert.equal(s3.left, 'calc(26px + 40px)', '左锚点：右拖 left 增大');
 });
+
+test('渲染器加载成功 → createOrb 后必须 start()（rAF 是唯一绘制入口，不 start = 一帧不画的静止）', async () => {
+  const calls = [];
+  globalThis.__ORB_CALLS = calls;
+  const dataMod = (src) => `data:text/javascript,${encodeURIComponent(src)}`;
+  globalThis.__ENERGY_ORB_ASSETS__ = {
+    renderer: dataMod(`export function createOrb(){
+      return {
+        setState(){}, setConfig(){}, pulse(){ __ORB_CALLS.push('pulse'); },
+        start(){ __ORB_CALLS.push('start'); },
+        dispose(){ __ORB_CALLS.push('dispose'); },
+      };
+    }`),
+    three: dataMod('export const noop = 1;'),
+  };
+  // 用查询串绕开 ESM 模块缓存，拿到读取新资产 URL 的 client.js 实例
+  const cap = { spec: null };
+  const origLoad = window.__ModuleLoader__.load;
+  window.__ModuleLoader__.load = (spec) => { cap.spec = spec; };
+  try {
+    await import(`../client.js?ok=${Date.now()}`);
+  } finally {
+    window.__ModuleLoader__.load = origLoad;
+  }
+  const mod2 = cap.spec.factory(stubRequire);
+  let Comp = null;
+  mod2.apply({ slots: { inject: (s, cb) => cb(), register: (o, c) => { Comp = c; return () => {}; } } });
+  const stub = makeReactStub();
+  stubReactHolder.current = stub.React;
+  try {
+    const tree = Comp();
+    tree.children[0].props.ref.current = { fakeCanvas: true };   // 模拟 React ref 绑定（本测试无 DOM）
+    await new Promise((r) => setTimeout(r, 30));   // 等 import 解析 + createOrb + start
+    assert.deepEqual(calls, ['start'], 'createOrb 后必须立即 start()');
+  } finally {
+    for (const c of stub.cleanups) { try { c(); c(); } catch { /* 幂等 */ } }
+  }
+  assert.deepEqual(calls, ['start', 'dispose'], '清理应恰好 dispose 一次（幂等二次无效果）');
+});
