@@ -22,9 +22,11 @@ npm stage publish --access public --registry=https://registry.npmjs.org/
 | --- | --- | --- | --- | --- |
 | `0.0.0-stage` | 2026-11-01 11:31 | 手工 | 无 | 建包占位（让 npm 上出现该包的 Settings 页，才能填 Trusted Publisher） |
 | `0.1.0` | 2026-11-01 11:33 | 手工 `npm publish` | 无 | 发布包与仓库 HEAD 的 `npm pack` **逐字节相同**（shasum `bddd03592c40185acdbe991b5798ecfe1e299da8`）；内容含行 id `dsh-fly-energy-orb` |
+| `0.1.1` | 2026-11-01 12:21 | **推 `v0.1.1` tag → GitHub Actions** | **有**（slsa provenance v1） | Trusted Publisher 链路首验：tag 推上去 ≈3 分钟后 attestation 200（不存在的版本 404 作对照）；发布包内容与本地 `npm pack` 逐一相同（29 文件） |
 
 `0.1.0` 没有 git tag：**推 `v*` tag 会触发 release.yml**，而该版本已存在于 registry，CI 必然失败。
-tag 驱动的发布从**下一版**开始（`v0.1.1` 起），届时 `--provenance` 会把 attestation 补上。
+tag 驱动的发布从 `v0.1.1` 起（已验证：attestation 200 + 内容一致）。之后每一版都走
+「改 version → 提交 → `git tag -a vX.Y.Z` → 推 main 与 tag」。
 
 占位版本建议标弃用（不是删除，删版本会禁用重发）：
 
