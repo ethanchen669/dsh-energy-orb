@@ -49,13 +49,25 @@ test('重复同值 noteStatus 幂等（active 不抖）', () => {
   assert.equal(projector.snapshot().active, false);
 });
 
-test('updatedAt 随 noteStatus 前进，snapshot 不改时钟', () => {
+test('updatedAt 是快照生成时刻（liveness 心跳）：每次读都刷新', () => {
   const { projector, tick, now } = make();
   projector.noteStatus('s1', true);
   const first = projector.snapshot().updatedAt;
+  assert.equal(first, now(), '第一次快照应是当前时钟');
   tick(500);
-  projector.noteStatus('s2', true);
   const second = projector.snapshot().updatedAt;
-  assert.ok(second > first, `updatedAt 应前进：${first} → ${second}`);
-  assert.equal(second, now());
+  assert.equal(second, now(), '没有新事件也要刷新（否则长回合会被判陈旧）');
+  assert.ok(second > first);
+});
+
+test('长回合不会被自己的时间戳判死：持续 30s 每 2s 快照，active 与新鲜度都在', () => {
+  const { projector, tick, now } = make();
+  projector.noteStatus('s1', true);          // 回合开始，此后 30s 没有新事件
+  for (let elapsed = 0; elapsed <= 30_000; elapsed += 2_000) {
+    if (elapsed > 0) tick(2_000);
+    const s = projector.snapshot();
+    assert.equal(s.active, true, `第 ${elapsed / 1000}s 仍应是 active`);
+    assert.equal(s.updatedAt, now(), '每次快照都必须新鲜（客户端按 >10s 判陈旧）');
+    assert.ok(now() - s.updatedAt <= 10_000);
+  }
 });

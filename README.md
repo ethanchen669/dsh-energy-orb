@@ -54,6 +54,7 @@ dsh plugin add link:/Users/ethan/ai-workspace/dsh-plugins/dsh-energy-orb   # cwd
 ```bash
 node --test                                # 单测（52 项：契约/围栏/映射/几何/心跳/降级/生命周期/vendor 完整性）
 node scripts/verify-visual.mjs             # 浏览器 probe：真资产路由 + 真 WebGL 像素（三态/动效/透明/生命周期/悬浮层）
+node scripts/verify-host.mjs               # 宿主级集成：**真 cordis + 真 webServer** 起监听，验证 15 个资产 / 状态契约 / 围栏 / 卸载重挂
 node scripts/verify-live.mjs --self-test   # live 检查脚本自证（真 route handler 桩）
 node scripts/verify-live.mjs http://127.0.0.1:<port>   # 装载后对真实实例跑 A2/A2b/A3
 node scripts/vendor-sphere.mjs --check     # vendored 资产与上游是否一致
@@ -61,7 +62,8 @@ node scripts/vendor-sphere.mjs --check     # vendored 资产与上游是否一�
 
 ## 验收状态（2026-11-01）
 
-S1–S9 ✅（含 4 组 A/B 红证明），S10 ⏸ 待重启 `dsh web` 后跑 `verify-live` 与真机核对。
+S1–S9 ✅、S11–S12 ✅（含 6 组 A/B 红证明；S11 用宿主同一份 cordis + webServer 真起监听验证），
+S10 ⏸ 待重启 `dsh web` 后在真 GUI 里确认（`/api` 在浏览器鉴权后面，裸 curl 进不去）。
 逐条记录见 [`docs/plans/2026-11-01-energy-sphere-integration-acceptance.md`](docs/plans/2026-11-01-energy-sphere-integration-acceptance.md)。
 
 ## License

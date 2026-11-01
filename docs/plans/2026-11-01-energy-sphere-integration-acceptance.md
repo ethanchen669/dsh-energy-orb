@@ -3,7 +3,8 @@
 > 配套计划 [`2026-11-01-energy-sphere-integration.md`](2026-11-01-energy-sphere-integration.md)。
 > 每条标准带「检查」与「预期」，检查必须能红。状态：✅ 已实测通过、⏸ 待重启/装载后补跑。
 >
-> **状态标注**（2026-11-01）：S1–S9 ✅（含两组 A/B 红证明方向）；S10 ⏸ 待 `dsh web` 重启后跑 `verify-live` 与真机核对。
+> **状态标注**（2026-11-01 第二轮）：S1–S9、S11–S12 ✅；S10 ⏸ 待 `dsh web` 重启后在真 GUI 里确认
+> （`/api` 在浏览器鉴权后面，裸 curl 进不去；宿主接线改由 S11 的 `verify-host.mjs` 用真 cordis 验证）。
 
 ## 验收标准
 
@@ -25,7 +26,11 @@
 
 - [x] **S9 没有旧渲染体残留** ✅（`grep -r "orb-renderer" .` → 无命中；`docs/mockups/` 已删） —— 检查：`grep -rn "orb-renderer\|docs/mockups" --include='*.js' --include='*.mjs' --include='*.md' --include='*.json' .`；预期：无输出（旧计划/旧验收里若是历史叙事，必须带 superseded 标记且不指向不存在的文件）。
 
-- [ ] **S10 live：宿主里路由与资产都通** ⏸（待重启 `dsh web`） —— 检查：`node scripts/verify-live.mjs --self-test`（脚本自证）+ 重启后 `node scripts/verify-live.mjs http://127.0.0.1:<port>`；预期：self-test 9 项全绿；live 端 A2（状态 200 契约）、A2b（15 个白名单资产全 200、球体模块含 `createEnergySphere`、manifest 404、伪造 Host 403）、A3（三种伪造全 403 且不泄状态）全绿。
+- [x] **S11 宿主级集成：真 cordis + 真 webServer 起监听后全都通** ✅（`node scripts/verify-host.mjs`，12 项） —— 检查：跑该脚本（自动从 profile/npx 找 `@deepseek-ai/cordis` 与 `dsh-host-webserver`，找不到显式失败）；预期：15 个白名单资产全 200、球体模块含 `createEnergySphere` 与 `transparentPass`、`three.core` 可发、manifest 404、伪造 Host 403 且文案精确、状态路由 200 且字段齐全、`emit('api-session/status')` 能推动 active/idle、fiber dispose 后两条路由消失、重挂后恢复。
+
+- [x] **S12 真 cordis 的 effect 语义（回归钉）** ✅（`test/host-wiring-cordis.test.mjs` + 同形桩 `test/host-wiring.test.mjs`） —— 检查：`node --test test/host-wiring*.test.mjs`；预期：`ctx.effect` 回调**立即执行**、其**返回值**作为 disposer；apply 之后两条路由必须仍活着、事件仍订阅；fiber dispose 后路由与监听清空。曾经写成 `ctx.effect(() => { disposeX() })` ⇒ 注册当场被撤销 ⇒ 真机资产 404（降级球）+ 状态永远 idle（球静止）。
+
+- [ ] **S10 live：真 GUI 里看得见、动得起来** ⏸（待重启 `dsh web`） —— 检查：`node scripts/verify-live.mjs --self-test`（脚本自证）+ 重启后 `node scripts/verify-live.mjs http://127.0.0.1:<port>`；预期：self-test 9 项全绿；live 端 A2（状态 200 契约）、A2b（15 个白名单资产全 200、球体模块含 `createEnergySphere`、manifest 404、伪造 Host 403）、A3（三种伪造全 403 且不泄状态）全绿。
 
 ## A/B 红证明（每条断言都反向验证过）
 
@@ -35,6 +40,9 @@
 | S8「四角透明」 | 去掉补丁 pass（回到只有 OutputPass） | `cornerAlphaMax` 变 255，用例红 |
 | S7「dispose 恰一次」 | 卸载时不调 `sphere.dispose()` | 计数 0，用例红 |
 | S8「运行中的球在动」 | 把 `live` 用例改成 `paused: true` | 两帧指纹相同，用例红 |
+| S12「apply 后路由仍活着」 | 把 `index.js` 改回 `ctx.effect(() => { disposeState(); disposeAssets(); })` | 真 cordis 测试红：0/2 路由存活 |
+| S12「事件仍订阅」 | 同上（事件也被立即退订） | 「active 回合 → active:true」用例红 |
+| S11「fiber dispose 后路由消失」 | 去掉 disposer 里的撤销调用 | 卸载后仍 200，用例红 |
 
 ## 未覆盖 / 已知限制
 

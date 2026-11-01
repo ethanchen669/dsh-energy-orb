@@ -43,7 +43,7 @@ type EnergyOrbState = {
   active: boolean,
   intensity: number,          // 0..1，v1 = active ? 1 : 0
   phase: 'idle' | 'active' | 'error',
-  updatedAt: number           // Host 单调事实的毫秒时间戳；客户端按 >10s 判陈旧
+  updatedAt: number           // **快照生成时刻**（liveness 心跳，每次读刷新）；客户端按 >10s 判陈旧
 }
 ```
 
@@ -97,7 +97,8 @@ interface EnergySphereHandle {
 
 ## 数据与状态
 
-- Host 侧零持久化：`running` 集合只在内存；`updatedAt` 每次状态变化刷新。
+- Host 侧零持久化：`running` 集合只在内存；`updatedAt` 是**快照时刻**，每次 `snapshot()` 刷新——
+  否则长回合（>10s 没有新事件）会被客户端误判成陈旧，球在回合还在跑时缩回去（踩过）。
 - 客户端显示偏好住 localStorage 键 `energy-orb.display`：`{ visible, size(32..256), anchor, offset }`（单通道，禁止 host/client 双持久化）。
 - cordis Config 只有 `enabled`（boolean，默认 `true`）。
 - 球体内部状态（`active/paused/hidden/context-lost/disposed`）只在实例内；时间按帧间隔累计，不依赖 `setInterval`；`ResizeObserver` 管尺寸，DPR 上限 2，页面隐藏停帧。

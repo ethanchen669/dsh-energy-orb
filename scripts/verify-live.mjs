@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 // A2/A3 的 live 检查（装载放行后对真实宿主跑；`--self-test` 用真路由处理器起桩服务器自证脚本本身）。
+//
+// 注意：真 GUI 的 `/api/**` 在浏览器鉴权后面（`?token=` / 签名 cookie），裸 curl 会先被拦成 401；
+// 因此「宿主接线是否正确」的常规尺子是 `scripts/verify-host.mjs`（真 cordis + 真 webServer，不需要 token）；
+// 本脚本的 live 模式用于把 token 提供给它的场景（或把实例放在不鉴权的反代后面时）。
 // 用法：
 //   node scripts/verify-live.mjs http://127.0.0.1:<port>   # 对指定实例跑 A2 + A3
 //   node scripts/verify-live.mjs --self-test               # 桩服务器自检（不依赖装载门）
