@@ -31,7 +31,16 @@
 
 ## 装在界面的哪里
 
-右侧留白、不挡内容 —— 默认 192 × 192 的悬浮层，贴在右下角（`shell.overlay`），可拖拽到任意角落：
+右侧留白、不挡内容 —— 默认 192 × 192 的悬浮层，贴在右下角（`shell.overlay`），可拖拽到任意角落。
+**官方 UI 实拍**（纯净 DSH Web GUI，未加载任何皮肤）：
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ethanchen669/dsh-energy-orb/main/docs/images/vanilla-ui.png" alt="官方 UI 实拍：静息态，悬浮在右下角" width="100%">
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ethanchen669/dsh-energy-orb/main/docs/images/vanilla-ui-close.png" alt="近景：粒子核心 + 三圈机械环，透明背景" width="100%">
+</p>
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/ethanchen669/dsh-energy-orb/main/docs/images/overlay.png" alt="在工作区右下角的样子" width="100%">
