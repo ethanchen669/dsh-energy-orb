@@ -16,6 +16,23 @@ npm stage publish --access public --registry=https://registry.npmjs.org/
 
 > `npm publish` 直接发也要 2FA，且不带 provenance；`stage` 版本批准后才算发布。
 
+## 发布记录（本仓实测）
+
+| 版本 | 时间（UTC） | 方式 | provenance | 备注 |
+| --- | --- | --- | --- | --- |
+| `0.0.0-stage` | 2026-11-01 11:31 | 手工 | 无 | 建包占位（让 npm 上出现该包的 Settings 页，才能填 Trusted Publisher） |
+| `0.1.0` | 2026-11-01 11:33 | 手工 `npm publish` | 无 | 发布包与仓库 HEAD 的 `npm pack` **逐字节相同**（shasum `bddd03592c40185acdbe991b5798ecfe1e299da8`）；内容含行 id `dsh-fly-energy-orb` |
+
+`0.1.0` 没有 git tag：**推 `v*` tag 会触发 release.yml**，而该版本已存在于 registry，CI 必然失败。
+tag 驱动的发布从**下一版**开始（`v0.1.1` 起），届时 `--provenance` 会把 attestation 补上。
+
+占位版本建议标弃用（不是删除，删版本会禁用重发）：
+
+```bash
+npm deprecate @dsh-fly/dsh-energy-orb@0.0.0-stage "placeholder for trusted publisher setup" \
+  --registry=https://registry.npmjs.org/
+```
+
 ## 一次性：Trusted Publisher（首版之后）
 
 npm → `@dsh-fly/dsh-energy-orb` → **Settings → Trusted Publisher**：
