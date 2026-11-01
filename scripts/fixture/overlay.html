@@ -82,7 +82,7 @@ mod.apply({
   slots: {
     inject(slot, cb) { return cb(); },
     register(opts, component) {
-      if (opts.name !== 'shell.overlay' || opts.id !== 'dsh-energy-orb') {
+      if (opts.name !== 'shell.overlay' || opts.id !== 'dsh-fly-energy-orb') {
         throw new Error(`注册形状不符：${JSON.stringify(opts)}`);
       }
       OrbComponent = component;

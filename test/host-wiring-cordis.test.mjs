@@ -63,7 +63,7 @@ test('真 cordis：apply 后两条路由仍注册、事件仍订阅（不是注�
   const { routes, webServer } = trackWebServer();
   const ctx = new Context();
   ctx.provide('webServer', webServer);
-  const fiber = ctx.plugin({ name: 'dsh-energy-orb', apply: mod.apply });
+  const fiber = ctx.plugin({ name: '@dsh-fly/dsh-energy-orb', apply: mod.apply });
   await new Promise((r) => setTimeout(r, 80));
 
   assert.equal(routes.length, 2, `应注册两条路由，实际 ${routes.length}`);

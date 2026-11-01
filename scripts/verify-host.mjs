@@ -53,7 +53,7 @@ const { default: webServerPlugin } = await import(pathToFileURL(WEBSERVER).href)
 
 const ctx = new Context();
 ctx.plugin(webServerPlugin, { host: '127.0.0.1', port: 0 });
-const fiber = ctx.plugin({ name: 'dsh-energy-orb', apply: applyHost });
+const fiber = ctx.plugin({ name: '@dsh-fly/dsh-energy-orb', apply: applyHost });
 
 // 等 webServer 起来 + 注入回调跑完
 let origin;
@@ -148,7 +148,7 @@ try {
     afterDispose.status === 404, `status=${afterDispose.status}`);
   check('fiber dispose 后状态路由消失', stateAfterDispose.status === 404, `status=${stateAfterDispose.status}`);
 
-  const fiber2 = ctx.plugin({ name: 'dsh-energy-orb', apply: applyHost });
+  const fiber2 = ctx.plugin({ name: '@dsh-fly/dsh-energy-orb', apply: applyHost });
   await new Promise((r) => setTimeout(r, 200));
   const remounted = await rawGet(`${ASSET_PREFIX}/sphere/energy-sphere.js`);
   check('重新挂载后资产路由恢复（重复 apply 幂等）',

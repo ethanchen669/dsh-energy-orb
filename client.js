@@ -337,7 +337,7 @@ window.__ModuleLoader__.load({
       inject: ['slots'],
       apply(ctx) {
         ctx.slots.inject('shell.overlay', () => ctx.slots.register(
-          { name: 'shell.overlay', id: 'dsh-energy-orb', order: 10 },
+          { name: 'shell.overlay', id: 'dsh-fly-energy-orb', order: 10 },
           OrbComponent,
         ));
       },

@@ -15,7 +15,7 @@ const stubRequire = (name) => {
 const mod = captured.spec.factory(stubRequire);
 const T = mod.__testables;
 
-test('apply 后 register 收到 shell.overlay 与 id: dsh-energy-orb', () => {
+test('apply 后 register 收到 shell.overlay 与 id: dsh-fly-energy-orb', () => {
   assert.deepEqual(mod.inject, ['slots']);
   const calls = [];
   const ctx = {
@@ -31,7 +31,7 @@ test('apply 后 register 收到 shell.overlay 与 id: dsh-energy-orb', () => {
   const reg = calls.find((c) => c.register);
   assert.equal(calls[0].slot, 'shell.overlay');
   assert.equal(reg.register.name, 'shell.overlay');
-  assert.equal(reg.register.id, 'dsh-energy-orb');
+  assert.equal(reg.register.id, 'dsh-fly-energy-orb');
   assert.equal(typeof reg.component, 'function');
 });
 

@@ -79,6 +79,8 @@ Harness 'api-session/status' ─→ ActivityProjector（Host 折叠 running 集�
 
 - **Host 零持久化**：`running` 集合在内存里；`updatedAt` 是每次快照的时刻（liveness 心跳），
   所以**长回合不会被误判成陈旧**。
+- **插件名 / 行 id**：`dsh-fly-energy-orb`（bundle patch 的行 id，市场与配置里看到的就是它）；
+  npm 包名是 `@dsh-fly/dsh-energy-orb`，客户端 bundle 的 `ModuleLoader` id 用完整包名。
 - **资产路由只放行精确白名单**（15 个文件：球体模块 + `three` 闭包），越界 404、非 loopback 403。
 - **运行期零依赖**：`three` 与后处理链是 vendored 副本（MIT，含 license 头），装包不需要构建、
   不需要 `npm install`、不会因为上游 three 升版而碎。vendored 资产由

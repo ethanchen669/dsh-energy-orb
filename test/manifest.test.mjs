@@ -16,10 +16,12 @@ test('package.json declares the bundle manifest', () => {
   }
 });
 
-test('cordis.patch.yml 的行名 == npm 包名（scoped 也要逐字一致）', () => {
+test('cordis.patch.yml：行 id = 插件名 dsh-fly-energy-orb，行 name = npm 包名', () => {
   const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
   const yml = readFileSync(join(ROOT, 'cordis.patch.yml'), 'utf8');
-  assert.match(yml, /id:\s*['"]?dsh-energy-orb/);
+  // 行 id 是**插件名**（用户/市场里看到的名字），行 name 是 loader 解析用的**包名** ——
+  // 两者是两件事：主仓门禁按 dsh.bundle 的 patch 读行 id，不再从包名硬推。
+  assert.match(yml, /- id: dsh-fly-energy-orb/);
   // 行 name 必须是完整包名：loader 按它解析包、客户端半边按它登记（与 @dsh-fly/dsh-plugin-fly-skins 同款）
   assert.ok(yml.includes(`name: '${pkg.name}'`), `patch 行名与包名不一致：期望 name: '${pkg.name}'`);
 });
