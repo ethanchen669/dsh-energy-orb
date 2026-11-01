@@ -3,8 +3,8 @@
 > 配套计划 [`2026-11-01-energy-sphere-integration.md`](2026-11-01-energy-sphere-integration.md)。
 > 每条标准带「检查」与「预期」，检查必须能红。状态：✅ 已实测通过、⏸ 待重启/装载后补跑。
 >
-> **状态标注**（2026-11-01 第二轮）：S1–S9、S11–S12 ✅；S10 ⏸ 待 `dsh web` 重启后在真 GUI 里确认
-> （`/api` 在浏览器鉴权后面，裸 curl 进不去；宿主接线改由 S11 的 `verify-host.mjs` 用真 cordis 验证）。
+> **状态标注**（2026-11-01 第三轮，重启后实测）：S1–S12 ✅ 全绿。宿主接线由 S11 的 `verify-host.mjs`
+> （真 cordis + 真 webServer）与 live 探测共同钉住；视觉/动效由用户真机确认（新球 = 网络球 + 三圈机械环）。
 
 ## 验收标准
 
@@ -30,7 +30,7 @@
 
 - [x] **S12 真 cordis 的 effect 语义（回归钉）** ✅（`test/host-wiring-cordis.test.mjs` + 同形桩 `test/host-wiring.test.mjs`） —— 检查：`node --test test/host-wiring*.test.mjs`；预期：`ctx.effect` 回调**立即执行**、其**返回值**作为 disposer；apply 之后两条路由必须仍活着、事件仍订阅；fiber dispose 后路由与监听清空。曾经写成 `ctx.effect(() => { disposeX() })` ⇒ 注册当场被撤销 ⇒ 真机资产 404（降级球）+ 状态永远 idle（球静止）。
 
-- [ ] **S10 live：真 GUI 里看得见、动得起来** ⏸（待重启 `dsh web`） —— 检查：`node scripts/verify-live.mjs --self-test`（脚本自证）+ 重启后 `node scripts/verify-live.mjs http://127.0.0.1:<port>`；预期：self-test 9 项全绿；live 端 A2（状态 200 契约）、A2b（15 个白名单资产全 200、球体模块含 `createEnergySphere`、manifest 404、伪造 Host 403）、A3（三种伪造全 403 且不泄状态）全绿。
+- [x] **S10 live：真 GUI 里看得见、动得起来** ✅（2026-11-01 重启后实测） —— 检查：对运行中的实例（`dsh web --profile fly --port 3081`）跑①`for key in ALLOWED_ASSETS: GET /energy-orb/assets/<key>`②`GET /api/energy-orb/state`③伪造 `Host: evil.example`；预期：①15 个资产全 200 ②200 且 `active` 与本回合运行态一致、`updatedAt` 距现在 <5s ③两条路由都 `403 forbidden: loopback-only`。实测：①15/15 200 ②200 `{"active":true,...}`、新鲜度 5ms ③资产/状态均 403 精确文案；用户真机确认为新球。 ⏸（待重启 `dsh web`） —— 检查：`node scripts/verify-live.mjs --self-test`（脚本自证）+ 重启后 `node scripts/verify-live.mjs http://127.0.0.1:<port>`；预期：self-test 9 项全绿；live 端 A2（状态 200 契约）、A2b（15 个白名单资产全 200、球体模块含 `createEnergySphere`、manifest 404、伪造 Host 403）、A3（三种伪造全 403 且不泄状态）全绿。
 
 ## A/B 红证明（每条断言都反向验证过）
 
@@ -44,8 +44,9 @@
 | S12「事件仍订阅」 | 同上（事件也被立即退订） | 「active 回合 → active:true」用例红 |
 | S11「fiber dispose 后路由消失」 | 去掉 disposer 里的撤销调用 | 卸载后仍 200，用例红 |
 
-## 未覆盖 / 已知限制
+## 未覆盖 / 已知限制（仍未收口的项，按 `- [ ]` 跟踪）
 
-- 真机（用户屏幕、真实 GUI 背景、光/暗主题）的观感由用户判定；脚本只给「渲染出来了/在动/透明/尺寸正确」的可机器判定部分。
-- `prefers-reduced-motion` 的浏览器开关在 probe 里未实机切换（映射层的行为有单测），属已知覆盖缺口。
-- demo 上游若改版：重新 `node scripts/vendor-sphere.mjs` 并复跑 S1–S8；补丁失配会由脚本报错拦下。
+- [ ] **`prefers-reduced-motion` 的实机切换未覆盖** —— 检查：在系统里打开「减弱动态效果」后重载 GUI，观察球停环、无心跳但静息/激活仍可区分；预期：无缩放动画。现状：映射层有单测（`test/sphere-mapping.test.mjs`），浏览器 probe 未切换该媒体查询。
+- [ ] **demo 上游的透明画布缺陷未回灌** —— 检查：把本插件 `transparent-alpha-pass` 的补丁搬到 `apps/energy-sphere-demo/src/energy-sphere.js` 并跑 demo 的 `npm run verify:browser`；预期：demo 在不透明背景下四角不再是深色方块。现状：只修了插件这份 vendored 副本（`client/vendor/README.md` 已记录补丁与理由）。
+- [ ] **默认尺寸 192×192 待用户定稿** —— 检查：分别按 `size: 96`（192px）与 `size: 128`（256px）看真机观感（对照 `docs/verify/overlay-idle.png` / `overlay-idle-256.png`）；预期：既不挡视线、也能看清机械环刻度。现状：默认 96，改一个常量即可。
+- [ ] **vendored 资产随上游漂移** —— 检查：上游 demo 改版后跑 `node scripts/vendor-sphere.mjs --check`；预期：不一致时脚本报错退出，重跑生成即可。现状：本次锁定 `three@0.180.0`，无自动跟踪。
