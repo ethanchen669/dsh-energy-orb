@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>energy-orb 悬浮层 fixture（真组件 · 真资产路由 · 真状态轮询）</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0A0D13;
+    color: #6b7c93;
+    font-family: -apple-system, "PingFang SC", sans-serif;
+    height: 100vh;
+    overflow: hidden;
+  }
+  /* 模拟作战室：一块工作区 + 底部状态条，用来判断能量球在小窗里会不会挡视线 */
+  .fake-shell { position: absolute; inset: 0; padding: 24px; }
+  .fake-panel {
+    border: 1px solid #1d2836;
+    border-radius: 10px;
+    padding: 20px;
+    background: #0d1219;
+    height: calc(100vh - 120px);
+    font-size: 13px;
+    line-height: 1.9;
+  }
+  .fake-panel b { color: #c9d6e5; }
+  .fake-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; background: #0d1219; border-top: 1px solid #1d2836; }
+  #mount { position: absolute; inset: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="fake-shell">
+  <div class="fake-panel">
+    <b>作战室（模拟）</b><br>
+    · 用来判断能量球在真实尺寸下挡不挡视线、清不清楚<br>
+    · 本页走真链路：client.js → /energy-orb/assets/** → vendored three 闭包 → 轮询 /api/energy-orb/state
+  </div>
+</div>
+<div class="fake-bar"></div>
+<div id="mount"></div>
+<script>
+  window.__ModuleLoader__ = { load(spec) { window.__spec = spec; } };
+  window.__uncaught = 0;
+  window.addEventListener('error', () => window.__uncaught++);
+  window.addEventListener('unhandledrejection', () => window.__uncaught++);
+</script>
+<script src="/client.js"></script>
+<script type="module">
+import * as React from './react-delegate.mjs';
+
+const requireShim = (name) => {
+  if (name === 'react') return React.delegate;
+  throw new Error(`unexpected require: ${name}`);
+};
+const mod = window.__spec.factory(requireShim);
+
+let OrbComponent = null;
+mod.apply({
+  slots: {
+    inject(slot, cb) { return cb(); },
+    register(opts, component) {
+      if (opts.name !== 'shell.overlay' || opts.id !== 'dsh-energy-orb') {
+        throw new Error(`注册形状不符：${JSON.stringify(opts)}`);
+      }
+      OrbComponent = component;
+      return () => {};
+    },
+  },
+});
+
+const mountPoint = document.getElementById('mount');
+React.beginRender();
+const tree = OrbComponent();
+mountPoint.appendChild(React.toDom(tree));
+
+const waitFor = async (predicate, timeoutMs = 10_000) => {
+  const start = performance.now();
+  while (performance.now() - start < timeoutMs) {
+    if (predicate()) return true;
+    await new Promise((r) => requestAnimationFrame(r));
+  }
+  return false;
+};
+
+// 等球体就位（canvas 出现 = 资产路由 + vendored three 闭包全部加载成功）
+window.__canvasReady = await waitFor(() => Boolean(document.querySelector('[data-dsh-energy-orb-root] canvas')));
+
+const readOrbPixels = () => {
+  const canvas = document.querySelector('[data-dsh-energy-orb-root] canvas');
+  if (!canvas) return { error: 'no-canvas' };
+  const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+  if (!gl) return { error: 'no-webgl' };
+  const pixels = new Uint8Array(canvas.width * canvas.height * 4);
+  gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+  let lit = 0;
+  let coreSum = 0;
+  let coreCount = 0;
+  const coreRadius = Math.min(canvas.width, canvas.height) * 0.22;
+  for (let i = 0; i < pixels.length; i += 4) {
+    const p = i / 4;
+    const x = p % canvas.width;
+    const y = Math.floor(p / canvas.width);
+    if (pixels[i + 3] > 24) lit += 1;
+    if (Math.hypot(x - canvas.width / 2, y - canvas.height / 2) < coreRadius) {
+      coreSum += pixels[i + 1];
+      coreCount += 1;
+    }
+  }
+  const at = (x, y) => {
+    const i = ((canvas.height - 1 - y) * canvas.width + x) * 4;
+    return { a: pixels[i + 3], rgb: [pixels[i], pixels[i + 1], pixels[i + 2]] };
+  };
+  const corners = [at(2, 2), at(canvas.width - 3, 2), at(2, canvas.height - 3), at(canvas.width - 3, canvas.height - 3)];
+  return {
+    lit,
+    coreMeanGreen: coreCount ? coreSum / coreCount : 0,
+    size: `${canvas.width}x${canvas.height}`,
+    cornerAlphaMax: Math.max(...corners.map((c) => c.a)),
+    cornerSample: corners[0],
+  };
+};
+window.__readOrbPixels = readOrbPixels;
+
+window.__prefs = (() => {
+  try {
+    return JSON.parse(localStorage.getItem('energy-orb.display'));
+  } catch {
+    return null;
+  }
+})();
+window.__rootBox = (() => {
+  const root = document.querySelector('[data-dsh-energy-orb-root]');
+  if (!root) return null;
+  const r = root.getBoundingClientRect();
+  return { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height), right: Math.round(innerWidth - r.right), bottom: Math.round(innerHeight - r.bottom) };
+})();
+window.__overlayReady = true;
+</script>
+</body>
+</html>

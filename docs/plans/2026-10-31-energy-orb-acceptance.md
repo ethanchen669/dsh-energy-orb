@@ -1,5 +1,10 @@
 # dsh-energy-orb 验收契约
 
+> ⚠️ **SUPERSEDED（2026-11-01）**：自研 `orb-renderer` 渲染体已被用户判定不可用并撤除，A4/A5/A8/A9 等条目引用的
+> `test/orb-math.test.mjs`、`docs/mockups/*`、`docs/verify/orb-*.png` 均已删除。现行验收见
+> [`2026-11-01-energy-sphere-integration-acceptance.md`](2026-11-01-energy-sphere-integration-acceptance.md)。
+
+
 > 配套计划 [`2026-10-31-energy-orb.md`](2026-10-31-energy-orb.md)。验收先于实现；每条标准带「检查」与「预期」，检查必须能红。
 > 通用前置：插件经 `plugin_manager install_bundle` 装载到**非 3080** 的 scratch 实例（临时端口 + 仓库外 scratch home）。
 >

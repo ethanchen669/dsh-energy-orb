@@ -2,57 +2,106 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<title>energy-orb 视觉对照 fixture</title>
+<title>energy-orb 球体视觉/动效 fixture</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #0A0D13; color: #9FB0C8; font-family: -apple-system, "PingFang SC", sans-serif; padding: 24px; }
-  .row { display: flex; gap: 28px; align-items: center; }
+  .row { display: flex; gap: 28px; align-items: flex-start; }
   .cell { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-  canvas { width: 300px; height: 300px; mix-blend-mode: screen; }
-  .cap { font-size: 14px; }
-  .cap b { color: #E4EBF6; display: block; text-align: center; }
-  .mockup { margin-top: 24px; }
-  .mockup img { width: 1560px; }
+  .stage { width: 300px; height: 300px; }
+  /* renderer.setSize(w,h,false) 不写 style：不拉伸的话 canvas 按 DPR 放大后的属性尺寸溢出容器
+     （DPR=2 → 2 倍，看起来像「球被放大裁掉」）。插件里由 client.js 内联同样三行。 */
+  .stage canvas { display: block; width: 100%; height: 100%; }
+  .cap { font-size: 13px; line-height: 1.4; text-align: center; }
+  .cap b { color: #E4EBF6; display: block; }
+  .ref { margin-top: 28px; }
+  .ref img { width: 900px; border: 1px solid #1d2836; }
 </style>
 </head>
 <body>
 <div class="row" id="row"></div>
-<div class="mockup"><img id="mock" alt="mockup 对照" src="../../docs/mockups/orb-closeups.png"></div>
+<div class="ref"><img id="reference" alt="对照物：apps/energy-sphere-demo 的定稿预览" src="/docs/reference/energy-sphere-preview.png"></div>
 <script type="module">
-import { createOrb } from '../../client/orb-renderer.js';
-import * as THREE from '../../client/vendor/three.module.min.js';
+// 走**真实资产路由**加载球体与 vendored three（不是 file:// 相对路径）：
+// fixture 证明的正是「插件在浏览器里能不能把整个闭包拉起来」这条链。
+import { createEnergySphere } from '/energy-orb/assets/sphere/energy-sphere.js';
 
-const now = Date.now();
+const IDLE = {
+  color: '#42dcff', heartbeatEnabled: false, coreScale: 0.82, coreBrightness: 0.5,
+  energy: 0.55, rotationSpeed: 0.55, bpm: 56, paused: true,
+};
+const ACTIVE = {
+  color: '#42dcff', heartbeatEnabled: false, coreScale: 1.08, coreBrightness: 1.3,
+  energy: 1, rotationSpeed: 1, bpm: 112, paused: true,
+};
 const CASES = [
-  { id: 'idle',   t: 0,    state: { version: 1, active: false, intensity: 0, phase: 'idle',   updatedAt: now }, cap: '静息 0.6× · 辉光 0.3' },
-  { id: 'attack', t: 3120, state: { version: 1, active: true,  intensity: 1, phase: 'active', updatedAt: now }, cap: '攻起峰值 ≈1.1× · 辉光 1.0' },
-  { id: 'decay',  t: 3360, state: { version: 1, active: true,  intensity: 1, phase: 'active', updatedAt: now }, cap: '舒张回落 ≈0.9× · 辉光 0.55' },
+  { id: 'idle', options: IDLE, cap: '静息：心跳关闭 · 核心 0.82× · 辉光 0.5' },
+  { id: 'active', options: ACTIVE, cap: '激活（定格）：心跳关闭 · 核心 1.08× · 辉光 1.3' },
+  { id: 'live', options: { ...ACTIVE, paused: false, heartbeatEnabled: true }, cap: '激活（运行中）：双拍心跳 + 外环自转' },
+  { id: 'pulse', options: ACTIVE, cap: '脉冲对照：静止基线（pulse 前）' },
 ];
 
 const row = document.getElementById('row');
-const orbs = [];
+const handles = new Map();
 for (const c of CASES) {
   const cell = document.createElement('div');
   cell.className = 'cell';
-  const cv = document.createElement('canvas');
-  cv.width = 600; cv.height = 600;
-  cv.dataset.orbId = c.id;
+  const stage = document.createElement('div');
+  stage.className = 'stage';
+  stage.dataset.stageId = c.id;
   const cap = document.createElement('div');
   cap.className = 'cap';
   cap.innerHTML = `<b>${c.id}</b>${c.cap}`;
-  cell.append(cv, cap);
+  cell.append(stage, cap);
   row.append(cell);
-  const orb = createOrb(cv, { reducedMotion: false, THREE, preserveDrawingBuffer: true });
-  orb.setState(c.state);
-  orb.__renderAt(c.t);
-  orbs.push({ id: c.id, orb, cv });
+  const handle = createEnergySphere(stage, c.options);
+  // paused:true 时渲染循环不画帧（只在 update 时画一次）——首帧必须显式 update 才会出现
+  handle.update({});
+  handles.set(c.id, handle);
 }
 
-window.__capture = (id) => {
-  const hit = orbs.find((o) => o.id === id);
-  return hit ? hit.cv.toDataURL('image/png') : null;
-};
 window.__ids = CASES.map((c) => c.id);
+
+/** 读真实 WebGL 像素（球体自带 preserveDrawingBuffer，可直接 readPixels）。 */
+window.__readPixels = (id) => {
+  const stage = document.querySelector(`[data-stage-id="${id}"]`);
+  const canvas = stage.querySelector('canvas');
+  if (!canvas) return { error: 'no-canvas' };
+  const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+  if (!gl) return { error: 'no-webgl' };
+  const pixels = new Uint8Array(canvas.width * canvas.height * 4);
+  gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+  let lit = 0;
+  let coreSum = 0;
+  let coreCount = 0;
+  let fingerprint = 2166136261;
+  const coreRadius = Math.min(canvas.width, canvas.height) * 0.22;
+  for (let i = 0; i < pixels.length; i += 4) {
+    const p = i / 4;
+    const x = p % canvas.width;
+    const y = Math.floor(p / canvas.width);
+    const a = pixels[i + 3];
+    if (a > 24) lit += 1;
+    if (Math.hypot(x - canvas.width / 2, y - canvas.height / 2) < coreRadius) {
+      coreSum += pixels[i + 1];
+      coreCount += 1;
+    }
+    fingerprint = Math.imul(fingerprint ^ pixels[i], 16777619);
+    fingerprint = Math.imul(fingerprint ^ pixels[i + 1], 16777619);
+    fingerprint = Math.imul(fingerprint ^ pixels[i + 2], 16777619);
+    fingerprint = Math.imul(fingerprint ^ a, 16777619);
+  }
+  return {
+    lit,
+    coreMeanGreen: coreCount > 0 ? coreSum / coreCount : 0,
+    fingerprint: String(fingerprint >>> 0),
+    size: `${canvas.width}x${canvas.height}`,
+  };
+};
+
+window.__update = (id, patch) => handles.get(id).update(patch);
+window.__pulse = (id, strength = 2) => handles.get(id).pulse(strength);
+
 window.__ready = true;
 </script>
 </body>

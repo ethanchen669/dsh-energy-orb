@@ -5,8 +5,13 @@
 //   node scripts/verify-live.mjs --self-test               # 桩服务器自检（不依赖装载门）
 // 退出码：全绿 0，任一红 1。
 import http from 'node:http';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createProjector } from '../host/projector.js';
 import { registerStateRoute, FORBIDDEN_BODY } from '../host/state-route.js';
+import { registerAssetRoute, ALLOWED_ASSETS, ASSET_PREFIX } from '../host/asset-route.js';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const results = [];
 function check(name, ok, detail = '') {
@@ -79,15 +84,49 @@ async function runChecks(base) {
       statusOk && bodyOk && noLeak,
       `status=${r.status} body=${JSON.stringify(r.body.slice(0, 60))}`);
   }
+
+  // ---- A2b：资产路由真的把 vendored 闭包发出去（浏览器能不能加载就看这条） ----
+  const sphere = await get(base, `${ASSET_PREFIX}/sphere/energy-sphere.js`);
+  check('A2b 球体模块 200 且内容正确',
+    sphere.status === 200 && sphere.body.includes('createEnergySphere'),
+    `status=${sphere.status} bytes=${sphere.body.length}`);
+
+  const addon = await get(base, `${ASSET_PREFIX}/vendor/addons/postprocessing/Pass.js`);
+  check('A2b addons 子路径 200（闭包里的相对 import 靠它）',
+    addon.status === 200 && addon.body.includes('FullScreenQuad'),
+    `status=${addon.status} bytes=${addon.body.length}`);
+
+  let missing = 0;
+  for (const key of ALLOWED_ASSETS) {
+    const r = await get(base, `${ASSET_PREFIX}/${key}`);
+    if (r.status !== 200) {
+      missing += 1;
+      check(`A2b 白名单项 ${key} 200`, false, `status=${r.status}`);
+    }
+  }
+  check(`A2b 全部 ${ALLOWED_ASSETS.length} 个白名单资产都可取`, missing === 0, `缺失 ${missing} 个`);
+
+  const notAllowed = await get(base, `${ASSET_PREFIX}/vendor/manifest.json`);
+  check('A2b 白名单外 404（manifest 不对外）', notAllowed.status === 404, `status=${notAllowed.status}`);
+
+  const assetForged = await get(base, `${ASSET_PREFIX}/sphere/energy-sphere.js`, { host: 'evil.example' });
+  check('A2b 非 loopback Host → 403 且不泄源码',
+    assetForged.status === 403 && assetForged.body === FORBIDDEN_BODY,
+    `status=${assetForged.status} body=${JSON.stringify(assetForged.body.slice(0, 40))}`);
 }
 
 async function selfTest() {
   const projector = createProjector();
   projector.noteStatus('self-test', true);
-  const route = {};
-  const fakeCtx = { webServer: { register(r) { Object.assign(route, r); return () => {}; } } };
-  registerStateRoute(fakeCtx, projector);
-  const server = http.createServer((req, res) => route.handler(req, res));
+  const stateRoute = {};
+  const assetRoute = {};
+  const fakeCtx = { webServer: { register(r) { return () => {}; } } };
+  registerStateRoute({ webServer: { register(r) { Object.assign(stateRoute, r); return () => {}; } } }, projector);
+  registerAssetRoute({ webServer: { register(r) { Object.assign(assetRoute, r); return () => {}; } } }, ROOT);
+  const server = http.createServer((req, res) => {
+    if (req.url.startsWith(ASSET_PREFIX)) assetRoute.handler(req, res);
+    else stateRoute.handler(req, res);
+  });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${server.address().port}`;
   console.log(`# self-test 桩服务器 ${base}（真 route handler）`);

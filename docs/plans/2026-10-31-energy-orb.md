@@ -1,5 +1,10 @@
 # dsh-energy-orb 实现计划
 
+> ⚠️ **SUPERSEDED（2026-11-01）**：自研 `orb-renderer` 渲染体已被用户判定不可用并撤除，本文仅作历史记录；
+> 现行计划见 [`2026-11-01-energy-sphere-integration.md`](2026-11-01-energy-sphere-integration.md)。文中提到的 `client/orb-renderer.js`、
+> `test/orb-math.test.mjs`、`docs/mockups/*` 均已删除。
+
+
 > **给执行者：** 按任务逐个实现本计划，步骤用复选框（`- [ ]`）跟踪；
 > 执行方式见文末 Execution Handoff。
 

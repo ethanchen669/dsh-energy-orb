@@ -50,15 +50,42 @@ function unmount() {
 function countRoots() {
   return document.querySelectorAll('[data-dsh-energy-orb-root]').length;
 }
+function countCanvases() {
+  return document.querySelectorAll('[data-dsh-energy-orb-stage] canvas').length;
+}
+function countFallback() {
+  return document.querySelectorAll('[data-dsh-energy-orb-fallback]').length;
+}
+
+// 球体是异步 import + 建 WebGL 上下文，等它就位再量（最多 8s）
+async function waitFor(predicate, label, timeoutMs = 8000) {
+  const start = performance.now();
+  while (performance.now() - start < timeoutMs) {
+    if (predicate()) return true;
+    await new Promise((r) => requestAnimationFrame(r));
+  }
+  results[`timeout_${label}`] = true;
+  return false;
+}
 
 mount();
 results.afterMount1 = countRoots();
+await waitFor(() => countCanvases() === 1 || countFallback() === 1, 'canvas1');
+results.canvasAfterMount1 = countCanvases();
+results.fallbackAfterMount1 = countFallback();
+results.stageSrc = document.querySelector('[data-dsh-energy-orb-stage] canvas')?.tagName || null;
+
 unmount();
 results.afterUnmount1 = countRoots();
+results.canvasAfterUnmount1 = countCanvases();
+
 mount();
 results.afterMount2 = countRoots();
+await waitFor(() => countCanvases() + countFallback() >= 1, 'canvas2');
+results.canvasAfterMount2 = countCanvases();
 unmount();
 results.afterUnmount2 = countRoots();
+results.canvasAfterUnmount2 = countCanvases();
 
 window.__results = results;
 window.__results.uncaught = window.__uncaught;

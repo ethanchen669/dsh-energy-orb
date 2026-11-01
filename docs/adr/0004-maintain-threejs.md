@@ -8,7 +8,8 @@
 该材质 Canvas2D 可 1:1 实现——效果图就是 Canvas2D 渲出来的，且 Canvas2D 对比 Three.js
 可砍掉 600KB vendor 与 WebGL 失败模式。ADR-0001 当时以「需求本体是 shader 3D 感」为由
 排除 Canvas2D，**该前提已变**。用户裁定：**维持 Three.js**，并要求效果图往 3D 效果上调整
-（已落实：透视近大远小、深度渐变、定向光、倾斜轨道环，见 `docs/mockups/*.png`）。
+（当时的对照物是 `docs/mockups/*.png`，该目录已于 2026-11-01 随自研渲染体一并删除，
+见 [`ADR-0005`](0005-energy-sphere-integration.md)；现行对照物是 `docs/reference/energy-sphere-preview.png`）。
 
 ## Options
 

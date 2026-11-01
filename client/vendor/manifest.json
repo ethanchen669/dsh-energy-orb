@@ -1,0 +1,110 @@
+{
+  "generatedBy": "scripts/vendor-sphere.mjs",
+  "sourceApp": "../../dsh-fly/apps/energy-sphere-demo",
+  "threeVersion": "0.180.0",
+  "rewrite": "'three' → vendor/three.module.min.js；'three/addons/*' → vendor/addons/*；相对说明符原样折叠成相对 URL",
+  "patches": [
+    {
+      "path": "client/sphere/energy-sphere.js",
+      "id": "transparent-alpha-pass",
+      "note": "末级 pass 还原 alpha + 径向收边（去掉不透明方形辉光底）"
+    },
+    {
+      "path": "client/sphere/energy-sphere.js",
+      "id": "transparent-alpha-pass-wire",
+      "note": "装配补丁 pass"
+    }
+  ],
+  "files": [
+    {
+      "path": "client/sphere/animation.js",
+      "bytes": 521,
+      "sha256": "368436d43d56c600dc3317c4bd09d43f61a208ca0fdd95e47ce0dc722e02c709",
+      "source": "src/animation.js"
+    },
+    {
+      "path": "client/sphere/energy-sphere.js",
+      "bytes": 21140,
+      "sha256": "09cbdb25904bad12c068a541d8e1139f5f1dde6560edd282d932cba19510d798",
+      "source": "src/energy-sphere.js"
+    },
+    {
+      "path": "client/sphere/options.js",
+      "bytes": 1324,
+      "sha256": "137e740d2a133af1a718331adba93c7334d50e9a9e28c04ea316c0ed93178142",
+      "source": "src/options.js"
+    },
+    {
+      "path": "client/vendor/addons/postprocessing/EffectComposer.js",
+      "bytes": 8471,
+      "sha256": "5cc98ae193f62a5e37ae44fd627dd3d72da6f34fc5220aeeb869a9d5709ef507",
+      "source": "node_modules/three/examples/jsm/postprocessing/EffectComposer.js"
+    },
+    {
+      "path": "client/vendor/addons/postprocessing/MaskPass.js",
+      "bytes": 4668,
+      "sha256": "64944f7898920266d06844bd651e1c667999c5b3bcf54bf9d5c6a2bd0db13ac9",
+      "source": "node_modules/three/examples/jsm/postprocessing/MaskPass.js"
+    },
+    {
+      "path": "client/vendor/addons/postprocessing/OutputPass.js",
+      "bytes": 4023,
+      "sha256": "24d0142bdd984b0a0ef1ca1cc9dde7e17ae2891579ba0ed74b1a34a60560378c",
+      "source": "node_modules/three/examples/jsm/postprocessing/OutputPass.js"
+    },
+    {
+      "path": "client/vendor/addons/postprocessing/Pass.js",
+      "bytes": 4186,
+      "sha256": "f415bf02fb6cbd6d56241eb4c463709790c906e743c9be8f39786b7dc62b6bd3",
+      "source": "node_modules/three/examples/jsm/postprocessing/Pass.js"
+    },
+    {
+      "path": "client/vendor/addons/postprocessing/RenderPass.js",
+      "bytes": 4106,
+      "sha256": "0ae4c0b111cd2e930cabe5de1a73564e950eb91a24d8a052bceb37ec9ebc9450",
+      "source": "node_modules/three/examples/jsm/postprocessing/RenderPass.js"
+    },
+    {
+      "path": "client/vendor/addons/postprocessing/ShaderPass.js",
+      "bytes": 3222,
+      "sha256": "7814d1c6b9589197550b731420970037889770ec7d064278eeba4e933ed67404",
+      "source": "node_modules/three/examples/jsm/postprocessing/ShaderPass.js"
+    },
+    {
+      "path": "client/vendor/addons/postprocessing/UnrealBloomPass.js",
+      "bytes": 14382,
+      "sha256": "4ac7401b0bffbed64a96a7510befdf1817ddb89c906f8e189cfb67c5cfb3f7cc",
+      "source": "node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js"
+    },
+    {
+      "path": "client/vendor/addons/shaders/CopyShader.js",
+      "bytes": 710,
+      "sha256": "1958deb9ab76180027d535e50a3f02bd810ab4233bdcd2978084d3df05964641",
+      "source": "node_modules/three/examples/jsm/shaders/CopyShader.js"
+    },
+    {
+      "path": "client/vendor/addons/shaders/LuminosityHighPassShader.js",
+      "bytes": 1292,
+      "sha256": "b1933339b01cd18d2fb1e386478bc80012c076c25376f8a16656dda4f5c69844",
+      "source": "node_modules/three/examples/jsm/shaders/LuminosityHighPassShader.js"
+    },
+    {
+      "path": "client/vendor/addons/shaders/OutputShader.js",
+      "bytes": 1857,
+      "sha256": "ae8c704c92e890ca58ea0e36fcd8b6376a4d68719297afe2a04ac2300e1b0e10",
+      "source": "node_modules/three/examples/jsm/shaders/OutputShader.js"
+    },
+    {
+      "path": "client/vendor/three.core.min.js",
+      "bytes": 381124,
+      "sha256": "61ba0df005b05991361d040d8ff670e1aadfd0ce7aeebd1fdb0725957a8957de",
+      "source": "node_modules/three/build/three.core.min.js"
+    },
+    {
+      "path": "client/vendor/three.module.min.js",
+      "bytes": 338908,
+      "sha256": "e2b5ee6bccd38fd6d8a2428546b83c5f2426d84b152ef82be8055556e3b40eb6",
+      "source": "node_modules/three/build/three.module.min.js"
+    }
+  ]
+}
