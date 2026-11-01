@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as THREE from '../client/vendor/three.module.min.js';
@@ -28,17 +28,39 @@ function jsFilesUnder(relDir) {
   return out;
 }
 
-test('本地补丁有记录且落到了生成物里（透明画布修复不许被静默丢弃）', () => {
-  const ids = manifest.patches.map((p) => p.id);
-  assert.deepEqual(ids, ['transparent-alpha-pass', 'transparent-alpha-pass-wire'], `manifest 补丁记录不符：${ids}`);
+test('透明画布修复必须在生成物里（无论来自上游还是本地补丁）', () => {
   const sphere = readFileSync(join(CLIENT, 'sphere', 'energy-sphere.js'), 'utf8');
-  assert.match(sphere, /\[dsh-energy-orb patch\]/, '补丁标记不在生成物里');
-  assert.match(sphere, /import \{ ShaderPass \} from '\.\.\/vendor\/addons\/postprocessing\/ShaderPass\.js'/,
-    '补丁 import 未落地');
+  // 1) 装配：末级 pass 真的被加进 composer
   assert.match(sphere, /const transparentPass = new ShaderPass/, '末级透明 pass 未装配');
-  // alpha 由亮度还原 + 外圈径向淡出：这两个式子是「不是不透明方块」的根据
+  assert.match(sphere, /composer\.addPass\(transparentPass\)/, '透明 pass 没有进 composer');
+  // 2) 算法：alpha 由亮度还原 + 外圈径向淡出（「不是不透明方块」的根据）
   assert.match(sphere, /float a = clamp\( max\( max\( c\.r, c\.g \), c\.b \), 0\.0, 1\.0 \) \* mask;/);
   assert.match(sphere, /smoothstep\( 0\.84, 1\.0, d \)/);
+  // 3) import 走的是改写后的相对路径（浏览器没有裸说明符）
+  assert.match(sphere, /from '\.\.\/vendor\/addons\/postprocessing\/ShaderPass\.js'/);
+});
+
+test('补丁清单记录了每条的归宿（applied / skipped-upstream-fixed）', () => {
+  const ids = manifest.patches.map((p) => p.id);
+  assert.deepEqual(ids, ['transparent-alpha-pass', 'transparent-alpha-pass-wire'], `补丁记录不符：${ids}`);
+  for (const patch of manifest.patches) {
+    assert.ok(['applied', 'skipped-upstream-fixed'].includes(patch.state), `未知状态：${JSON.stringify(patch)}`);
+    assert.ok(patch.note && patch.path, `补丁记录不完整：${JSON.stringify(patch)}`);
+  }
+  // 回灌完成后：本地补丁应被跳过（上游自己修了），插件不再带分叉
+  assert.ok(manifest.patches.every((p) => p.state === 'skipped-upstream-fixed'),
+    `上游已回灌，本地补丁不该再生效：${JSON.stringify(manifest.patches.map((p) => p.state))}`);
+});
+
+test('上游 demo（若在本机）也有透明修复 —— 回灌不许悄悄丢', (t) => {
+  const demo = join(ROOT, '../../dsh-fly/apps/energy-sphere-demo/src/energy-sphere.js');
+  if (!existsSync(demo)) {
+    t.diagnostic(`跳过：本机没有上游 demo（${demo}）`);
+    return;
+  }
+  const source = readFileSync(demo, 'utf8');
+  assert.match(source, /const transparentPass = new ShaderPass/, '上游 demo 丢了透明修复（回灌失效）');
+  assert.match(source, /smoothstep\( 0\.84, 1\.0, d \)/);
 });
 
 test('manifest 记录来源与 three 版本（溯源可查）', () => {

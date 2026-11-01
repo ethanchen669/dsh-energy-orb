@@ -47,6 +47,6 @@
 ## 未覆盖 / 已知限制（仍未收口的项，按 `- [ ]` 跟踪）
 
 - [ ] **`prefers-reduced-motion` 的实机切换未覆盖** —— 检查：在系统里打开「减弱动态效果」后重载 GUI，观察球停环、无心跳但静息/激活仍可区分；预期：无缩放动画。现状：映射层有单测（`test/sphere-mapping.test.mjs`），浏览器 probe 未切换该媒体查询。
-- [ ] **demo 上游的透明画布缺陷未回灌** —— 检查：把本插件 `transparent-alpha-pass` 的补丁搬到 `apps/energy-sphere-demo/src/energy-sphere.js` 并跑 demo 的 `npm run verify:browser`；预期：demo 在不透明背景下四角不再是深色方块。现状：只修了插件这份 vendored 副本（`client/vendor/README.md` 已记录补丁与理由）。
-- [ ] **默认尺寸 192×192 待用户定稿** —— 检查：分别按 `size: 96`（192px）与 `size: 128`（256px）看真机观感（对照 `docs/verify/overlay-idle.png` / `overlay-idle-256.png`）；预期：既不挡视线、也能看清机械环刻度。现状：默认 96，改一个常量即可。
+- [x] **demo 上游的透明画布缺陷已回灌**（2026-11-01） —— 检查：把本插件 `transparent-alpha-pass` 的补丁搬到 `apps/energy-sphere-demo/src/energy-sphere.js` 并跑 demo 的 `npm run verify:browser`；预期：demo 在不透明背景下四角不再是深色方块。现状：只修了插件这份 vendored 副本（`client/vendor/README.md` 已记录补丁与理由）。
+- [x] **默认尺寸 192×192 已定稿**（2026-11-01 用户确认「尺寸合适」） —— 检查：分别按 `size: 96`（192px）与 `size: 128`（256px）看真机观感（对照 `docs/verify/overlay-idle.png` / `overlay-idle-256.png`）；预期：既不挡视线、也能看清机械环刻度。现状：默认 96，改一个常量即可。
 - [ ] **vendored 资产随上游漂移** —— 检查：上游 demo 改版后跑 `node scripts/vendor-sphere.mjs --check`；预期：不一致时脚本报错退出，重跑生成即可。现状：本次锁定 `three@0.180.0`，无自动跟踪。

@@ -115,12 +115,15 @@ interface EnergySphereHandle {
 | 非 loopback 请求打路由 | `403 forbidden: loopback-only` | 不读、不回任何状态字节 |
 | 卸载/重挂 | 释放 rAF、WebGL、canvas、监听 | 根元素计数 1/0/1/0；`dispose()` 幂等 |
 
-**透明画布补丁**（vendored 的唯一本地分叉）：`UnrealBloomPass` 的辉光链会把整帧 alpha 写成 1，
+**透明画布修复**（已回灌上游 `apps/energy-sphere-demo`；本仓库 vendored 副本里的补丁逻辑保留为兜底）：`UnrealBloomPass` 的辉光链会把整帧 alpha 写成 1，
 在 demo 的整页深色背景看不出来，但在 DSH 里就是一块**不透明深色方块**。末级 pass 用亮度还原
 alpha 并做径向收边（0.84→1.0，机械环约占半宽 0.82，不会切到环）。四角 alpha = 0 有浏览器断言。
 
 ## 接缝与取舍
 
+- **修复归属上游**：透明画布这个缺陷是 demo 自己的（组件承诺透明背景但 bloom 链写 alpha=1），
+  已回灌到 `apps/energy-sphere-demo/src/energy-sphere.js` 并在 demo 的浏览器验收里加断言；
+  插件的游标补丁只在上游回退时兜底（`alreadyFixedMarker`）。
 - **vendor 而非依赖**：client 半边是 classic script，浏览器无 import map / node_modules ⇒ 裸说明符必须
   改成相对 URL。闭包由 `scripts/vendor-sphere.mjs` 按 import 图遍历生成（不是手抄清单），
   `manifest.json` 记 sha256 + 补丁，`test/vendor.test.mjs` 守完整性，资产路由白名单与 manifest 交叉校验。

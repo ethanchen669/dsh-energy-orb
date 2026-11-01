@@ -94,6 +94,7 @@ const PATCHES = [
       "import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';",
     ].join('\n'),
     note: '末级 pass 还原 alpha + 径向收边（去掉不透明方形辉光底）',
+    alreadyFixedMarker: 'ShaderPass',
   },
   {
     id: 'transparent-alpha-pass-wire',
@@ -121,20 +122,29 @@ const PATCHES = [
       '  composer.addPass(transparentPass);',
     ].join('\n'),
     note: '装配补丁 pass',
+    alreadyFixedMarker: 'transparentPass',
   },
 ];
 
-/** 应用补丁：每条 find 必须恰好命中一次（0 次 = 上游改了，2 次 = 补丁位置不唯一）。 */
+/**
+ * 应用补丁：每条 find 必须恰好命中一次（0 次 = 上游改了，2 次 = 补丁位置不唯一）。
+ * 例外：`alreadyFixedMarker` 已出现在源文件里 ⇒ 上游已经自己修了，跳过并在 manifest 记
+ * `skipped-upstream-fixed`（回灌完成后插件不该再带本地分叉）。
+ */
 function applyPatches(relPath, source) {
   let out = source;
   const applied = [];
   for (const patch of PATCHES.filter((p) => p.path === relPath)) {
+    if (patch.alreadyFixedMarker && out.includes(patch.alreadyFixedMarker)) {
+      applied.push({ id: patch.id, note: patch.note, state: 'skipped-upstream-fixed' });
+      continue;
+    }
     const hits = out.split(patch.find).length - 1;
     if (hits !== 1) {
       throw new Error(`补丁 ${patch.id} 在 ${relPath} 命中 ${hits} 次（必须恰好 1 次；上游 demo 改版了？请更新 ${patch.find.slice(0, 60)}…）`);
     }
     out = out.replace(patch.find, patch.replace);
-    applied.push({ id: patch.id, note: patch.note });
+    applied.push({ id: patch.id, note: patch.note, state: 'applied' });
   }
   return { source: out, applied };
 }

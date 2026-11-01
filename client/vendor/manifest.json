@@ -7,12 +7,14 @@
     {
       "path": "client/sphere/energy-sphere.js",
       "id": "transparent-alpha-pass",
-      "note": "末级 pass 还原 alpha + 径向收边（去掉不透明方形辉光底）"
+      "note": "末级 pass 还原 alpha + 径向收边（去掉不透明方形辉光底）",
+      "state": "skipped-upstream-fixed"
     },
     {
       "path": "client/sphere/energy-sphere.js",
       "id": "transparent-alpha-pass-wire",
-      "note": "装配补丁 pass"
+      "note": "装配补丁 pass",
+      "state": "skipped-upstream-fixed"
     }
   ],
   "files": [
@@ -24,8 +26,8 @@
     },
     {
       "path": "client/sphere/energy-sphere.js",
-      "bytes": 21140,
-      "sha256": "09cbdb25904bad12c068a541d8e1139f5f1dde6560edd282d932cba19510d798",
+      "bytes": 21245,
+      "sha256": "1824dc03ef5d97e8a2f2d3be8ea4db357cb24c2cd79418ea104146323f35f0cc",
       "source": "src/energy-sphere.js"
     },
     {

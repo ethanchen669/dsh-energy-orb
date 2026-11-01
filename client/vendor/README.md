@@ -21,12 +21,17 @@ Client 半边由引擎以 **classic script** 形态下发，浏览器里既没�
 逐个文件服务。闭包由脚本按 import 图遍历得出（不是手抄清单）——手抄清单漏一个文件，
 生产环境就是 404。
 
-## 本地补丁（唯一允许与上游分叉的地方）
+## 透明画布补丁（2026-11-01 已回灌上游）
 
-| id | 文件 | 内容 |
+| id | 内容 | 现在 |
 | --- | --- | --- |
-| `transparent-alpha-pass` | `sphere/energy-sphere.js` | 补 `ShaderPass` import |
-| `transparent-alpha-pass-wire` | `sphere/energy-sphere.js` | 在 `OutputPass` 之后加末级 pass：**用亮度还原 alpha**，并把最外圈径向淡出 |
+| `transparent-alpha-pass` | 补 `ShaderPass` import | **skipped-upstream-fixed**（上游 `apps/energy-sphere-demo` 已有） |
+| `transparent-alpha-pass-wire` | `OutputPass` 之后加末级 pass：亮度还原 alpha + 外圈径向淡出 | 同上 |
+
+脚本对每条补丁都带 `alreadyFixedMarker`：上游源文件里出现该标记就**跳过**并在
+`manifest.json` 记 `state: "skipped-upstream-fixed"`，所以插件不再带本地分叉；
+若上游哪天回退掉这段修复，补丁会自动重新生效（`state: "applied"`），生成物里始终有它
+（`test/vendor.test.mjs` 断言这一点，并在本机存在 demo 时同时断言 demo 也还有修复）。
 
 **为什么必须有这个补丁**：`UnrealBloomPass` 的辉光链会把整帧 alpha 写成 1。demo 的整页深色
 背景看不出来，但在 DSH 里它就是一块**不透明深色方块**贴在右下角（对照

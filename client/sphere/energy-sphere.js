@@ -398,8 +398,9 @@ export function createEnergySphere(container, initialOptions = {}) {
   const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.45, 0.58, 0.32);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
-  // [dsh-energy-orb patch] 透明画布：bloom 链把整帧 alpha 写成 1，宿主里就是一块不透明方形。
-  // 用亮度还原 alpha，并把最外圈径向淡出（机械环约占半宽 0.82，从 0.84 起淡出不会切到环）。
+  // 透明背景：UnrealBloomPass 的辉光链会把整帧 alpha 写成 1。整页深色背景看不出来，
+  // 但组件要嵌进别人的页面（DSH 插件），那时候它就是一块不透明方块。
+  // 末级 pass 用亮度还原 alpha，并把最外圈径向淡出（机械环约占半宽 0.82，从 0.84 起淡出不会切到环）。
   const transparentPass = new ShaderPass({
     uniforms: { tDiffuse: { value: null } },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',

@@ -60,6 +60,10 @@ node scripts/verify-live.mjs http://127.0.0.1:<port>   # 装载后对真实实�
 node scripts/vendor-sphere.mjs --check     # vendored 资产与上游是否一致
 ```
 
+> `docs/verify/` 里带 `live` 的图（`compare.png` 的 live 格、`overlay-*-full.png`）含动画帧，
+> 重跑 probe 会因相位不同而字节变化——这是**预期**的，别拿它们的 diff 当回归信号；
+> `sphere-idle/active/pulse.png` 是定格态，字节稳定。
+
 ## 验收状态（2026-11-01）
 
 S1–S9 ✅、S11–S12 ✅（含 6 组 A/B 红证明；S11 用宿主同一份 cordis + webServer 真起监听验证），
