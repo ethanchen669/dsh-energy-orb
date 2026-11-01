@@ -139,10 +139,13 @@ async function selfTest() {
 }
 
 const arg = process.argv[2];
-if (arg === '--self-test') {
+if (arg === '--self-test' || arg === undefined) {
+  // 无参数时必须**不**去碰任何真实实例：门禁/CI 里没有 3081，打过去只会误伤别人的进程。
+  // 要检查真实实例就显式给 URL。
+  if (arg === undefined) console.log('# 未给 URL：只跑自检（真 route handler 桩），不触碰任何真实实例');
   await selfTest();
 } else {
-  const base = arg || 'http://127.0.0.1:3081';
+  const base = arg;
   console.log(`# live 检查目标 ${base}`);
   await runChecks(base);
 }

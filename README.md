@@ -98,7 +98,7 @@ Harness 'api-session/status' ─→ ActivityProjector（Host 折叠 running 集�
 ```bash
 node --test                                # 单测：宿主接线 / 状态契约 / 映射表 / 降级 / vendor 完整性
 node scripts/verify-host.mjs               # 宿主级集成：真 cordis + 真 dsh-host-webserver 起真监听（12 项）
-node scripts/verify-visual.mjs             # 浏览器 probe：真资产路由 + 真 WebGL 像素（42 项）
+node scripts/verify-visual.mjs             # 浏览器 probe：真资产路由 + 真 WebGL 像素（42 项；产物落 .tmp/，加 --save 写回 docs/verify/）
 node scripts/verify-live.mjs --self-test   # live 检查脚本自证
 node scripts/vendor-sphere.mjs --check     # vendored 资产与上游 demo 是否一致
 node scripts/shoot-readme.mjs              # 重出 README 效果图（docs/images/*.png）

@@ -10,6 +10,7 @@
 // 依赖：~/.dsh/profiles/node_modules 里的 @deepseek-ai/{cordis,dsh-host-webserver}
 //      （或 npx 闭包里的同款；都找不到则显式失败，不静默跳过）
 import { existsSync, readdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -25,9 +26,12 @@ function check(name, ok, detail = '') {
   console.log(`${ok ? '✓' : '✖'} ${name}${detail ? ` —— ${detail}` : ''}`);
 }
 
-/** 在 profile / npx 闭包里找引擎包。 */
+/** 在 profile / npx 闭包里找引擎包；先试**调用方工作目录**（dsh-fly 门禁里 cwd 就是主仓根）。 */
 function findPackage(relPath) {
   const candidates = [];
+  try {
+    candidates.push(createRequire(join(process.cwd(), 'package.json')).resolve(relPath));
+  } catch { /* cwd 里没有就继续找 */ }
   if (process.env.DSH_PROFILE_DIR) candidates.push(join(process.env.DSH_PROFILE_DIR, 'node_modules', relPath));
   candidates.push(join(homedir(), '.dsh/profiles/node_modules', relPath));
   const npxRoot = join(homedir(), '.npm/_npx');

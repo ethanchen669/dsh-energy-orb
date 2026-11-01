@@ -5,8 +5,9 @@
 // 真 handler 接进 probe 的服务器，这条链才**真的被验证**（静态目录能过、路由白名单漏一个
 // 文件就 404 的失败形状，是两种不同的绿）。
 //
-// 用法：node scripts/verify-visual.mjs      （devDependency playwright-core）
-// 产物：docs/verify/{sphere-idle,sphere-active,sphere-live}.png + compare.png
+// 用法：node scripts/verify-visual.mjs          （默认产物写到 .tmp/verify/，不脏工作树）
+//      node scripts/verify-visual.mjs --save     （写回 docs/verify/，用于更新对照图）
+// 产物：{sphere-idle,sphere-active,sphere-live,sphere-pulse}.png + compare.png + overlay-*.png
 import { createRequire } from 'node:module';
 import { mkdirSync, existsSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -18,7 +19,10 @@ const { chromium } = require('playwright-core');
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
-const OUT = join(ROOT, 'docs', 'verify');
+// 默认落到 .tmp/（gitignored）：门禁会在任何仓里跑这个脚本，跑完不该把工作树弄脏。
+// 需要更新对照图时显式 `--save`，写回 docs/verify/。
+const SAVE = process.argv.includes('--save');
+const OUT = SAVE ? join(ROOT, 'docs', 'verify') : join(ROOT, '.tmp', 'verify');
 mkdirSync(OUT, { recursive: true });
 
 // 真资产路由 + 真状态路由 + 静态 fixture，全走 host 里那两份 handler
