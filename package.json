@@ -1,11 +1,33 @@
 {
   "name": "dsh-energy-orb",
   "version": "0.1.0",
-  "private": true,
+  "description": "Web3D energy orb for the DeepSeek Harness Web GUI: a status-only decoration that shrinks and goes silent while idle and heart-beats while a turn runs.",
   "type": "module",
-  "repository": { "type": "git", "url": "git+https://github.com/ethanchen669/dsh-energy-orb.git" },
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "web3d",
+    "three",
+    "status",
+    "decoration"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ethanchen669/dsh-energy-orb.git"
+  },
   "homepage": "https://github.com/ethanchen669/dsh-energy-orb#readme",
-  "bugs": { "url": "https://github.com/ethanchen669/dsh-energy-orb/issues" },
+  "bugs": {
+    "url": "https://github.com/ethanchen669/dsh-energy-orb/issues"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
@@ -21,6 +43,14 @@
     "locale/*.json",
     "icon.svg"
   ],
+  "scripts": {
+    "test": "node --test",
+    "verify": "node --test",
+    "verify:host": "node scripts/verify-host.mjs",
+    "verify:visual": "node scripts/verify-visual.mjs",
+    "vendor:check": "node scripts/vendor-sphere.mjs --check",
+    "shoot:readme": "node scripts/shoot-readme.mjs"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -32,6 +62,7 @@
     }
   },
   "devDependencies": {
-    "playwright-core": "^1.63.0"
+    "@deepseek-ai/cordis": "^4.0.5",
+    "playwright-core": "1.63.0"
   }
 }

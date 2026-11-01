@@ -30,6 +30,8 @@
 
 - [x] **S12 真 cordis 的 effect 语义（回归钉）** ✅（`test/host-wiring-cordis.test.mjs` + 同形桩 `test/host-wiring.test.mjs`） —— 检查：`node --test test/host-wiring*.test.mjs`；预期：`ctx.effect` 回调**立即执行**、其**返回值**作为 disposer；apply 之后两条路由必须仍活着、事件仍订阅；fiber dispose 后路由与监听清空。曾经写成 `ctx.effect(() => { disposeX() })` ⇒ 注册当场被撤销 ⇒ 真机资产 404（降级球）+ 状态永远 idle（球静止）。
 
+- [x] **S13 发布就绪：tarball 能装、README 图能重出** ✅（2026-11-01） —— 检查：`npm pack` 后把 tgz 装进**仓库外 + 全新 profile**（`DSH_HOME=$(mktemp -d)` → `dsh --profile fresh add <tgz>` → `--dump-config | grep -c 'id: dsh-energy-orb'`），再起该实例探测 `/energy-orb/assets/**` 与 `/api/energy-orb/state`；另一个检查是 `node scripts/shoot-readme.mjs`。预期：`add-exit=0`、装进来的 `version` 与包一致、composed config 含该行；新实例 15 个资产全 200 且状态路由 200；README 三张图重出且都不是空白（`shoot-readme` 自带字节下限断言）。实测：`add-exit=0`、`version 0.1.0`、`dump-config` 命中 3 处；资产 200 / 状态 200 `{"active":false,...}`；三张图 476KB / 242KB / 113KB。
+
 - [x] **S10 live：真 GUI 里看得见、动得起来** ✅（2026-11-01 重启后实测） —— 检查：对运行中的实例（`dsh web --profile fly --port 3081`）跑①`for key in ALLOWED_ASSETS: GET /energy-orb/assets/<key>`②`GET /api/energy-orb/state`③伪造 `Host: evil.example`；预期：①15 个资产全 200 ②200 且 `active` 与本回合运行态一致、`updatedAt` 距现在 <5s ③两条路由都 `403 forbidden: loopback-only`。实测：①15/15 200 ②200 `{"active":true,...}`、新鲜度 5ms ③资产/状态均 403 精确文案；用户真机确认为新球。 ⏸（待重启 `dsh web`） —— 检查：`node scripts/verify-live.mjs --self-test`（脚本自证）+ 重启后 `node scripts/verify-live.mjs http://127.0.0.1:<port>`；预期：self-test 9 项全绿；live 端 A2（状态 200 契约）、A2b（15 个白名单资产全 200、球体模块含 `createEnergySphere`、manifest 404、伪造 Host 403）、A3（三种伪造全 403 且不泄状态）全绿。
 
 ## A/B 红证明（每条断言都反向验证过）

@@ -1,77 +1,119 @@
 # dsh-energy-orb
 
-DSH Web GUI 的 **Web3D 能量球**插件：跟随会话状态的浮动装饰——静息时收缩静默，回合运行时以双拍心跳涨缩。
+**DSH Web GUI 的 Web3D 能量球插件** —— 会话状态可视化装饰：静息时收缩沉默，回合运行时以双拍心跳涨缩。
 
-渲染体是已定稿的 [`apps/energy-sphere-demo`](../../dsh-fly/apps/energy-sphere-demo)（AETHER // Energy Core）：
-粒子能量核心 + 三组前向机械环（刻度/节点/弧光）+ UnrealBloom，基于 `three@0.180.0`（MIT）。
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ethanchen669/dsh-energy-orb/main/docs/images/hero.png" alt="dsh-energy-orb：会话状态可视化装饰 · Web3D 能量球" width="100%">
+</p>
 
-> 对照物：[`docs/reference/energy-sphere-preview.png`](docs/reference/energy-sphere-preview.png)（demo 定稿预览）
-> 与 [`docs/verify/`](docs/verify/)（本插件真机渲染：悬浮层真尺寸、三态、生命周期）。
+<p align="center">
+  <a href="https://www.npmjs.com/package/dsh-energy-orb"><img alt="npm" src="https://img.shields.io/npm/v/dsh-energy-orb?color=42dcff"></a>
+  <a href="https://github.com/ethanchen669/dsh-energy-orb/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-42dcff"></a>
+  <img alt="runtime deps" src="https://img.shields.io/badge/runtime%20deps-0-42dcff">
+</p>
 
-## 状态 → 动效
+## 它是什么
 
-| 会话状态 | 能量球 |
-| --- | --- |
-| 静息（无活动回合 / 状态陈旧 >10s） | 心跳关闭 · 核心 0.82× · 辉光 0.5 · 外环缓转 |
-| 激活（扫描杠亮起的同一事件） | 双拍心跳 · 核心 1.08× · 辉光 1.3 · 外环全速 · 心率 64→112 BPM 随 intensity 提频 |
-| `error`（预留） | 红移 · 心跳关闭 |
-| `prefers-reduced-motion` | 停环关心跳，仅保留大小/亮度差 |
+一颗浮在界面右下角的能量球，**只做状态可视化**：不吃交互、不拦点击、不改变任何业务行为。
 
-状态切换做 420ms 指数插值（长大 + 变亮 + 起搏，不是跳变）；纯点击触发一次脉冲，拖拽移动位置。
+- **静息**（没有回合在跑）：核心缩到 0.82×、辉光压到 0.5、**心跳关闭**——静态就是静态。
+- **激活**（回合开始运行，与扫描杠亮起是同一个事件）：核心 1.08×、辉光 1.3，进入**双拍心跳**，
+  心率 64 → 112 BPM 随活动强度提频，三圈机械环全速自转；状态切换有 420ms 指数插值（长大 + 变亮 + 起搏，不是跳变）。
+- **点击**充能一次（单次能量脉冲）、**拖拽**换位置（位置/尺寸/显隐记在 localStorage）。
+- 尊重 `prefers-reduced-motion`：停环、关心跳，只保留大小与亮度差异。
 
-## 架构
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ethanchen669/dsh-energy-orb/main/docs/images/states.png" alt="静息 / 激活 / 使用中 三态" width="100%">
+</p>
 
-```
-Harness 'api-session/status' → ActivityProjector（Host 折叠）
-      → GET /api/energy-orb/state（loopback-only 围栏）
-      →（2s 轮询 + 10s 退避）OrbClient（shell.overlay 挂载；状态→球体参数 + 420ms 插值）
-      → import('/energy-orb/assets/sphere/energy-sphere.js')（懒加载，失败降 CSS 球）
-            └→ /energy-orb/assets/vendor/**（vendored three@0.180.0 闭包，精确白名单）
-```
+材质是粒子能量核心 + 三圈前向机械环（刻度 / 节点 / 弧光）+ UnrealBloom，基于 `three@0.180.0`。
+**画布是真透明**（四角 alpha = 0，有浏览器断言守着），所以它贴在任意背景上都不会出现方块底。
 
-- 状态契约：`EnergyOrbState = { version: 1, active, intensity, phase, updatedAt }`。
-- 显示偏好（位置/大小/显隐）住 localStorage；配置面只有 `enabled`。
-- 详细设计：[`docs/design.md`](docs/design.md)；决策记录：[`docs/adr/`](docs/adr/)（0005 = 换渲染体）；
-  实现计划与验收：[`docs/plans/`](docs/plans/)。
+## 装在界面的哪里
 
-## vendored 资产（`client/sphere/**` + `client/vendor/**`）
+右侧留白、不挡内容 —— 默认 192 × 192 的悬浮层，贴在右下角（`shell.overlay`），可拖拽到任意角落：
 
-**只由 `node scripts/vendor-sphere.mjs` 生成，不要手改**（sha256 测试会红）。它会：
-按 import 图遍历闭包 → 把所有裸说明符改写成相对 URL → 落盘 + 记 `client/vendor/manifest.json`（含 sha256 与补丁）。
-详见 [`client/vendor/README.md`](client/vendor/README.md)。
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ethanchen669/dsh-energy-orb/main/docs/images/overlay.png" alt="在工作区右下角的样子" width="100%">
+</p>
 
-视觉改动**先在 demo 仓改**、跑 demo 自己的 `npm test` / `npm run verify:browser`，再回来重跑生成脚本。
-
-## 安装（开发期，link 方式）
+## 安装
 
 ```bash
-dsh plugin add link:/Users/ethan/ai-workspace/dsh-plugins/dsh-energy-orb   # cwd = DSH_HOME
-# 装完重启 dsh web（引擎把客户端包缓存在进程内，刷新页面不够）
+# 发布到 npm 之后（版本按实际最新）
+cd ~/.dsh
+dsh plugin --profile=<你的 profile> add dsh-energy-orb --registry=https://registry.npmjs.org/
 ```
+
+装完**必须重启 `dsh web`**：引擎把客户端包缓存在进程内，只刷新页面不够。
+
+开发期直接装本地目录（软链，改码即生效，重启后加载）：
+
+```bash
+cd ~/.dsh
+dsh plugin --profile=<你的 profile> add link:/绝对路径/dsh-plugins/dsh-energy-orb
+```
+
+## 配置
+
+| 项 | 位置 | 说明 |
+| --- | --- | --- |
+| `enabled` | cordis Config | 唯一配置项，默认 `true`；关掉等于不挂载 |
+| `visible` / `size` / `anchor` / `offset` | 浏览器 localStorage，键 `energy-orb.display` | 显隐、直径（`size` 32–256，默认 96 → 192px）、贴哪一角、拖拽偏移 |
+
+没有别的配置面：状态来自 Harness 的会话事件，不来自配置。
+
+## 工作原理
+
+```
+Harness 'api-session/status' ─→ ActivityProjector（Host 折叠 running 集合）
+                                     │  { version:1, active, intensity, phase, updatedAt }
+                                     ▼
+                     GET /api/energy-orb/state   （loopback-only 围栏）
+                                     │  2s 轮询 / 10s 退避
+                                     ▼
+   OrbClient（shell.overlay）── 状态 → 球体参数（420ms 插值）──→ SphereRenderer
+                                     │                         （vendored three 闭包）
+                                     └── import('/energy-orb/assets/sphere/energy-sphere.js')
+```
+
+- **Host 零持久化**：`running` 集合在内存里；`updatedAt` 是每次快照的时刻（liveness 心跳），
+  所以**长回合不会被误判成陈旧**。
+- **资产路由只放行精确白名单**（15 个文件：球体模块 + `three` 闭包），越界 404、非 loopback 403。
+- **运行期零依赖**：`three` 与后处理链是 vendored 副本（MIT，含 license 头），装包不需要构建、
+  不需要 `npm install`、不会因为上游 three 升版而碎。vendored 资产由
+  [`scripts/vendor-sphere.mjs`](https://github.com/ethanchen669/dsh-energy-orb/blob/main/scripts/vendor-sphere.mjs)
+  按 import 图遍历生成，`client/vendor/manifest.json` 记 sha256 与溯源。
+- **失败即降级**：模块 404 / WebGL 不可用 / 上下文丢失 → 可见的 CSS 降级球（渐变 + 呼吸），
+  `console.warn` 恰一次，不空白、不炸页。
+
+## 兼容性
+
+- 平台：**DSH Web GUI**（`dsh.client.platform = "web"`，挂 `shell.overlay`，root 级悬浮层）。
+- 依赖宿主提供的 `webServer` 服务（路由）与 `api-session/status` 事件；缺任一则该插件不生效，而不是拖垮宿主。
+- 需要 WebGL2；不可用时自动降到 CSS 球。
 
 ## 开发与验证
 
 ```bash
-node --test                                # 单测（52 项：契约/围栏/映射/几何/心跳/降级/生命周期/vendor 完整性）
-node scripts/verify-visual.mjs             # 浏览器 probe：真资产路由 + 真 WebGL 像素（三态/动效/透明/生命周期/悬浮层）
-node scripts/verify-host.mjs               # 宿主级集成：**真 cordis + 真 webServer** 起监听，验证 15 个资产 / 状态契约 / 围栏 / 卸载重挂
-node scripts/verify-live.mjs --self-test   # live 检查脚本自证（真 route handler 桩）
-node scripts/verify-live.mjs http://127.0.0.1:<port>   # 装载后对真实实例跑 A2/A2b/A3
-node scripts/vendor-sphere.mjs --check     # vendored 资产与上游是否一致
+node --test                                # 单测：宿主接线 / 状态契约 / 映射表 / 降级 / vendor 完整性
+node scripts/verify-host.mjs               # 宿主级集成：真 cordis + 真 dsh-host-webserver 起真监听（12 项）
+node scripts/verify-visual.mjs             # 浏览器 probe：真资产路由 + 真 WebGL 像素（42 项）
+node scripts/verify-live.mjs --self-test   # live 检查脚本自证
+node scripts/vendor-sphere.mjs --check     # vendored 资产与上游 demo 是否一致
+node scripts/shoot-readme.mjs              # 重出 README 效果图（docs/images/*.png）
 ```
 
-> `docs/verify/` 里带 `live` 的图（`compare.png` 的 live 格、`overlay-*-full.png`）含动画帧，
-> 重跑 probe 会因相位不同而字节变化——这是**预期**的，别拿它们的 diff 当回归信号；
-> `sphere-idle/active/pulse.png` 是定格态，字节稳定。
+发版流程（首次 `npm stage publish` → 配 Trusted Publisher → 之后推 tag 自动发）见
+[`docs/publishing.md`](https://github.com/ethanchen669/dsh-energy-orb/blob/main/docs/publishing.md)。
 
-## 验收状态（2026-11-01）
-
-S1–S9 ✅、S11–S12 ✅（含 6 组 A/B 红证明；S11 用宿主同一份 cordis + webServer 真起监听验证），
-S10 ⏸ 待重启 `dsh web` 后在真 GUI 里确认（`/api` 在浏览器鉴权后面，裸 curl 进不去）。
-逐条记录见 [`docs/plans/2026-11-01-energy-sphere-integration-acceptance.md`](docs/plans/2026-11-01-energy-sphere-integration-acceptance.md)。
+设计、决策记录与验收：[`docs/design.md`](https://github.com/ethanchen669/dsh-energy-orb/blob/main/docs/design.md) ·
+[`docs/adr/`](https://github.com/ethanchen669/dsh-energy-orb/tree/main/docs/adr) ·
+[`docs/plans/`](https://github.com/ethanchen669/dsh-energy-orb/tree/main/docs/plans)（含逐条实测的验收契约）。
 
 ## License
 
-本插件：待定（首次 npm 发布前需定）。vendored 的 `three@0.180.0` 为 **MIT**（`three.module.min.js` 内嵌
-license 头，Copyright © 2010-2025 three.js authors）；`apps/energy-sphere-demo` 的代码随本项目同授权，
-其 vendored 副本的出处与补丁见 [`client/vendor/README.md`](client/vendor/README.md)。
+[MIT](https://github.com/ethanchen669/dsh-energy-orb/blob/main/LICENSE)。vendored 的 `three@0.180.0`
+同为 MIT（Copyright © 2010-2025 three.js authors，license 头随文件一起分发）；
+球体组件的来源、补丁与 vendored 清单见
+[`client/vendor/README.md`](https://github.com/ethanchen669/dsh-energy-orb/blob/main/client/vendor/README.md)。

@@ -12,31 +12,54 @@
     height: 100vh;
     overflow: hidden;
   }
-  /* 模拟作战室：一块工作区 + 底部状态条，用来判断能量球在小窗里会不会挡视线 */
-  .fake-shell { position: absolute; inset: 0; padding: 24px; }
-  .fake-panel {
-    border: 1px solid #1d2836;
-    border-radius: 10px;
-    padding: 20px;
-    background: #0d1219;
-    height: calc(100vh - 120px);
-    font-size: 13px;
-    line-height: 1.9;
+  /* 模拟作战室版式（侧栏 + 会话 + 输入框 + 底部状态条）：README 效果图与「挡不挡视线」的判断都从这张图来 */
+  .fake-shell { position: absolute; inset: 0; display: flex; }
+  .fake-side {
+    width: 232px; flex: none; padding: 18px 14px; background: #0b0f16; border-right: 1px solid #1d2836;
+    font-size: 12.5px; line-height: 2.1; color: #64758c;
   }
-  .fake-panel b { color: #c9d6e5; }
-  .fake-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; background: #0d1219; border-top: 1px solid #1d2836; }
+  .fake-side .brand { color: #cfe2f5; font-size: 13px; letter-spacing: .08em; margin-bottom: 14px; }
+  .fake-side .row { padding: 5px 8px; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fake-side .row.on { background: #121c28; color: #b7cbe1; }
+  .fake-main { flex: 1; display: flex; flex-direction: column; padding: 22px 26px; gap: 14px; min-width: 0; }
+  .fake-head { font-size: 12px; letter-spacing: .12em; color: #5d7793; text-transform: uppercase; }
+  .fake-msg { font-size: 13.5px; line-height: 1.85; color: #9fb3c9; max-width: 720px; }
+  .fake-msg.user { color: #cddcec; }
+  .fake-msg .who { color: #56c8f5; font-size: 12px; letter-spacing: .06em; margin-right: 8px; }
+  .fake-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.9;
+    color: #7ea6c7; background: #0b1017; border: 1px solid #17222f; border-radius: 8px; padding: 12px 14px; max-width: 640px;
+    white-space: pre;
+  }
+  .fake-input {
+    margin-top: auto; border: 1px solid #1d2836; border-radius: 9px; background: #0b1017;
+    padding: 12px 14px; font-size: 13px; color: #56687e;
+  }
+  .fake-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: #0b0f16; border-top: 1px solid #1d2836; font-size: 11.5px; color: #46586d; display: flex; align-items: center; gap: 18px; padding: 0 16px; letter-spacing: .06em; }
   #mount { position: absolute; inset: 0; pointer-events: none; }
 </style>
 </head>
 <body>
 <div class="fake-shell">
-  <div class="fake-panel">
-    <b>作战室（模拟）</b><br>
-    · 用来判断能量球在真实尺寸下挡不挡视线、清不清楚<br>
-    · 本页走真链路：client.js → /energy-orb/assets/** → vendored three 闭包 → 轮询 /api/energy-orb/state
+  <div class="fake-side">
+    <div class="brand">工作区</div>
+    <div class="row on">能量球插件 · 验收与发布</div>
+    <div class="row">渲染体换成 energy-sphere</div>
+    <div class="row">宿主接线排障记录</div>
+    <div class="row">三个环形阵列的密度规则</div>
+  </div>
+  <div class="fake-main">
+    <div class="fake-head">会话 · 能量球插件</div>
+    <div class="fake-msg user"><span class="who">你</span>把 demo 集成进来，替换掉现在这颗球。</div>
+    <div class="fake-msg"><span class="who">助手</span>已换成 vendored 的 energy-sphere：粒子核心 + 三圈机械环 + Bloom，静息时收缩、回合运行时双拍心跳。</div>
+    <div class="fake-code">node --test                          # 59 tests
+node scripts/verify-host.mjs         # 12 项（真 cordis）
+node scripts/verify-visual.mjs       # 42 项（真 WebGL）</div>
+    <div class="fake-msg"><span class="who">助手</span>宿主侧路由、资产与围栏都实测通过；右下角的球是装饰，不拦点击。</div>
+    <div class="fake-input">输入消息…</div>
   </div>
 </div>
-<div class="fake-bar"></div>
+<div class="fake-bar"><span>dev</span><span>3 sessions</span><span>ctx 12%</span></div>
 <div id="mount"></div>
 <script>
   window.__ModuleLoader__ = { load(spec) { window.__spec = spec; } };

@@ -1,0 +1,50 @@
+name: release
+
+# 推 v* 注释 tag 触发：OIDC 受信发布（npm Trusted Publisher），产物带 provenance。
+# 首次发布例外：包还不存在时 npm 上没有 Trusted Publisher 页面可填，
+# 第一版走 `npm stage publish --access public` + 网页批准（见 docs/publishing.md）。
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write # OIDC：npm provenance / trusted publishing 必需
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 署名检查要读整段历史
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dev dependencies
+        run: npm ci
+
+      - name: 署名检查（硬门）
+        run: |
+          set -euo pipefail
+          BAD=$(git log --format='%ae' HEAD | grep -v '^ethanchen669@users.noreply.github.com$' || true)
+          if [ -n "$BAD" ]; then
+            echo "::error::发现非预期提交署名：$BAD"
+            exit 1
+          fi
+          echo "署名干净"
+
+      - name: 单元与完整性测试
+        run: npm test
+
+      - name: npm 版本（OIDC 需要 ≥ 11.5，Node 22 自带 10.x）
+        run: npm install -g npm@11
+
+      - name: 发布（带 provenance）
+        run: npm publish --access public --provenance

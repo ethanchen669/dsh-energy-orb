@@ -8,13 +8,10 @@
 // 用法：node scripts/verify-visual.mjs      （devDependency playwright-core）
 // 产物：docs/verify/{sphere-idle,sphere-active,sphere-live}.png + compare.png
 import { createRequire } from 'node:module';
-import { createServer } from 'node:http';
-import { mkdirSync, readFileSync, existsSync, statSync } from 'node:fs';
-import { dirname, extname, join, normalize } from 'node:path';
+import { mkdirSync, existsSync, statSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { registerAssetRoute } from '../host/asset-route.js';
-import { registerStateRoute } from '../host/state-route.js';
-import { createProjector } from '../host/projector.js';
+import { startFixtureServer } from './lib/fixture-server.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright-core');
@@ -24,55 +21,9 @@ const ROOT = join(HERE, '..');
 const OUT = join(ROOT, 'docs', 'verify');
 mkdirSync(OUT, { recursive: true });
 
-const TYPES = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'application/javascript; charset=utf-8',
-  '.mjs': 'application/javascript; charset=utf-8',
-  '.png': 'image/png',
-  '.json': 'application/json; charset=utf-8',
-};
-
-// 真路由：fakeCtx 只为抓 register() 的 route（与 host-wiring 测试同形）。
-// 资产路由 + 状态路由都接真的：client.js 会轮询 /api/energy-orb/state，
-// 接桩会让 404 污染 console.error（而"无 console.error"本身是一条断言）。
-const assetRoute = {};
-registerAssetRoute({ webServer: { register(r) { Object.assign(assetRoute, r); return () => {}; } } }, ROOT);
-const stateRoute = {};
-const projector = createProjector();
-projector.noteStatus('fixture', false);
-registerStateRoute({ webServer: { register(r) { Object.assign(stateRoute, r); return () => {}; } } }, projector);
-const stateKey = `/api/energy-orb/state`;
-
-const server = createServer((req, res) => {
-  if (req.url.startsWith('/energy-orb/assets')) {
-    assetRoute.handler(req, res);
-    return;
-  }
-  if (req.url === stateKey || req.url.startsWith(`${stateKey}?`)) {
-    stateRoute.handler(req, res);
-    return;
-  }
-  // probe 专用控制面：翻投影器状态（fixture 用它驱动 静息→激活 的真实轮询链）
-  if (req.url.startsWith('/__fixture/state')) {
-    const params = new URL(req.url, 'http://127.0.0.1').searchParams;
-    projector.noteStatus('fixture', params.get('active') === '1');
-    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-    res.end(JSON.stringify(projector.snapshot()));
-    return;
-  }
-  const rel = normalize(decodeURIComponent(new URL(req.url, 'http://127.0.0.1').pathname));
-  const file = join(ROOT, rel);
-  if (!file.startsWith(ROOT) || !existsSync(file) || !statSync(file).isFile()) {
-    res.writeHead(404);
-    res.end('not-found');
-    return;
-  }
-  res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' });
-  res.end(readFileSync(file));
-});
-await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-const port = server.address().port;
-const base = `http://127.0.0.1:${port}`;
+// 真资产路由 + 真状态路由 + 静态 fixture，全走 host 里那两份 handler
+const server = await startFixtureServer(ROOT);
+const base = server.origin;
 
 const browser = await chromium.launch({
   args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
@@ -251,5 +202,5 @@ try {
   }, null, 2));
 } finally {
   await browser.close();
-  server.close();
+  await server.close();
 }

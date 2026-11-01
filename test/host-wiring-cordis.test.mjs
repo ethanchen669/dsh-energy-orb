@@ -13,9 +13,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-/** 找一份宿主用的 cordis：优先 profile，其次 npx 闭包。找不到就显式 skip（不静默）。 */
+/** 找一份宿主用的 cordis：优先本仓 devDependency（CI 用），其次 profile，最后 npx 闭包。找不到就显式 skip（不静默）。 */
 function findCordis() {
   const candidates = [];
+  // CI：package.json 里的 devDependency（@deepseek-ai/cordis）
+  try {
+    candidates.push(fileURLToPath(import.meta.resolve('@deepseek-ai/cordis')));
+  } catch { /* 没装就往后找 */ }
   if (process.env.DSH_PROFILE_DIR) {
     candidates.push(join(process.env.DSH_PROFILE_DIR, 'node_modules/@deepseek-ai/cordis/lib/index.js'));
   }
