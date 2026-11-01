@@ -36,7 +36,7 @@ test('水平环与垂直环保持正交；第三环正对相机成平面圆', ()
   assert.ok(Math.abs(normal.dot(CAMERA_POSITION.clone().normalize()) - 1) < 1e-9, 'viewPlane 环未正对相机');
 });
 
-test('环自转随 elapsed 与 rotationSpeed 线性推进；速度为 0 时静止', () => {
+test('环自转随 delta 与 rotationSpeed 增量推进；速度为 0 时静止', () => {
   const make = () => {
     const ring = { spin: new THREE.Group() };
     return ring;
@@ -47,6 +47,17 @@ test('环自转随 elapsed 与 rotationSpeed 线性推进；速度为 0 时静�
   updateRingPose(b, OUTER_RING_DEFINITIONS[0], 10, 0);
   assert.ok(Math.abs(a.spin.rotation.z) > 0.5, `环应自转：${a.spin.rotation.z}`);
   assert.equal(b.spin.rotation.z, OUTER_RING_DEFINITIONS[0].rotation[2], '速度为 0 时不许转');
+});
+
+test('速度乘子只影响未来角：累计角永不因乘子变化重算（时移回归钉）', () => {
+  const ring = { spin: new THREE.Group() };
+  const def = OUTER_RING_DEFINITIONS[0];
+  for (let i = 0; i < 100; i += 1) updateRingPose(ring, def, 1, 1);   // 累计 100s @ 1×
+  const before = ring.spin.rotation.z;
+  updateRingPose(ring, def, 1, 3);                                    // 再来 1s @ 3×
+  const delta = ring.spin.rotation.z - before;
+  assert.ok(Math.abs(delta - 3 * def.speed) < 1e-9,
+    `乘子变 3 后 1s 只该推进 ${3 * def.speed}，实得 ${delta}（旧公式会把 100s 历史角整体重算）`);
 });
 
 test('双拍心跳：主峰强、次峰小、静息接近 0；相位恒在 [0,1)', () => {

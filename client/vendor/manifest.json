@@ -26,8 +26,8 @@
     },
     {
       "path": "client/sphere/energy-sphere.js",
-      "bytes": 21245,
-      "sha256": "1824dc03ef5d97e8a2f2d3be8ea4db357cb24c2cd79418ea104146323f35f0cc",
+      "bytes": 21913,
+      "sha256": "6589a15538f745458434d2c2c0cd9b971fa358bd7801e6ae923aeb2edfe9c4de",
       "source": "src/energy-sphere.js"
     },
     {

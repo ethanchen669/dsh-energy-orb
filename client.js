@@ -115,7 +115,9 @@ window.__ModuleLoader__.load({
         coreScale: reducedMotion ? 1.05 : 1.08,
         coreBrightness: reducedMotion ? 1.15 : 1.3,
         energy: 1,
-        rotationSpeed: reducedMotion ? 0 : 1,
+        // 环速随活动强度提频（1.8~3.0×，静息 0.55×）：转速是逐帧积分的
+        // （见 energy-sphere.js 的 updateRingPose），ramp 只做平滑加减速、不回卷历史角。
+        rotationSpeed: reducedMotion ? 0 : 1.8 + 1.2 * clean.intensity,
         bpm: 64 + 48 * clean.intensity,
       };
     }

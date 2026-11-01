@@ -52,6 +52,17 @@ test('激活比静息更大更亮（同一组尺子上的单调性）', () => {
   assert.ok(a.rotationSpeed > i.rotationSpeed);
 });
 
+test('运行态环速随强度提频：1.8~3.0×，静息 0.55×（钉死精确值）', () => {
+  const hot = T.stateToSphereOptions(active({ intensity: 1 }), NOW);
+  const cold = T.stateToSphereOptions(active({ intensity: 0 }), NOW);
+  const idleState = T.stateToSphereOptions(idle(), NOW);
+  assert.equal(idleState.rotationSpeed, 0.55, '静息环速');
+  assert.equal(cold.rotationSpeed, 1.8, '运行态（强度 0）环速');
+  assert.equal(hot.rotationSpeed, 3, '运行态（强度 1）环速');
+  assert.ok(hot.rotationSpeed > cold.rotationSpeed, '强度越高转得越快');
+  assert.ok(cold.rotationSpeed > idleState.rotationSpeed, '运行态任何强度都快于静息');
+});
+
 test('陈旧状态（>10s）→ 按静息呈现且恰一次 warn；9s 仍是激活（两边界）', () => {
   const warns = [];
   const stale = T.stateToSphereOptions(active({ updatedAt: NOW - 11_000 }), NOW, { warn: (m) => warns.push(m) });

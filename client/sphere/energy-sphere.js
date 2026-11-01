@@ -31,8 +31,16 @@ export function orientRing(group, definition, cameraPosition) {
   group.rotation.set(...definition.rotation);
 }
 
-export function updateRingPose(ring, definition, elapsed, rotationSpeed) {
-  ring.spin.rotation.z = definition.rotation[2] + elapsed * definition.speed * rotationSpeed;
+/**
+ * 推进一帧环自转：**逐帧增量积分**（delta 秒 × 基准角速度 × 速度乘子）。
+ *
+ * 为什么不是 `base + elapsed × speed × mult`（旧公式）：乘子变化时旧公式会把**累计角
+ * 整体按新乘子重算** —— 状态切换（静息 0.55× ↔ 运行 1.8~3×）瞬间，累计了多久就抽搐多久
+ * （页面开 1 小时 ≈ 28 圈/0.42 秒的糊影）。增量积分下速度只影响未来、不影响历史角，
+ * 420ms 插值于是变成真正的平滑加减速。
+ */
+export function updateRingPose(ring, definition, delta, rotationSpeed) {
+  ring.spin.rotation.z += delta * definition.speed * rotationSpeed;
 }
 
 function randomGenerator(seed) {
@@ -337,7 +345,6 @@ export function createEnergySphere(container, initialOptions = {}) {
   let disposed = false;
   let contextLost = false;
   let frameId = null;
-  let elapsed = 0;
   let coreElapsed = 0;
   let lastTime = performance.now();
   let manualPulseStarted = -Infinity;
@@ -385,6 +392,7 @@ export function createEnergySphere(container, initialOptions = {}) {
   const rings = OUTER_RING_DEFINITIONS.map((definition) => {
     const ring = createRing(definition.radius, options.color, definition.seed, definition.density);
     orientRing(ring.group, definition, camera.position);
+    ring.spin.rotation.z = definition.rotation[2];   // 初始姿态：增量积分不再每帧重写
     world.add(ring.group);
     return ring;
   });
@@ -462,10 +470,7 @@ export function createEnergySphere(container, initialOptions = {}) {
       material.opacity = material.userData.baseOpacity * options.coreBrightness;
     }
     core.innerRing.rotation.z = coreElapsed * 0.2;
-    rings.forEach((ring, index) => {
-      updateRingPose(ring, OUTER_RING_DEFINITIONS[index], elapsed, options.rotationSpeed);
-    });
-    dustMaterial.rotation.z = -elapsed * 0.018 * options.rotationSpeed;
+    // 时间推进在 animate 的运行分支里（advanceMotion），这里只按当前姿态作画。
     haloMaterial.opacity = (0.025 + heart.glow * 0.035 + manual * 0.025)
       * options.energy * options.coreBrightness;
     halo.scale.setScalar(5.5 + pulse * 0.22);
@@ -486,7 +491,10 @@ export function createEnergySphere(container, initialOptions = {}) {
       : 0;
 
     if (!options.paused || manualActive) {
-      elapsed += delta;
+      rings.forEach((ring, index) => {
+        updateRingPose(ring, OUTER_RING_DEFINITIONS[index], delta, options.rotationSpeed);
+      });
+      dustMaterial.rotation.z -= delta * 0.018 * options.rotationSpeed;
       if (options.heartbeatEnabled) coreElapsed += delta;
       renderVisualState(currentHeart(), manual);
     }
