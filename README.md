@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/dsh-energy-orb"><img alt="npm" src="https://img.shields.io/npm/v/dsh-energy-orb?color=42dcff"></a>
+  <a href="https://www.npmjs.com/package/@dsh-fly/dsh-energy-orb"><img alt="npm" src="https://img.shields.io/npm/v/@dsh-fly%2Fdsh-energy-orb?color=42dcff"></a>
   <a href="https://github.com/ethanchen669/dsh-energy-orb/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-42dcff"></a>
   <img alt="runtime deps" src="https://img.shields.io/badge/runtime%20deps-0-42dcff">
 </p>
@@ -42,7 +42,7 @@
 ```bash
 # 发布到 npm 之后（版本按实际最新）
 cd ~/.dsh
-dsh plugin --profile=<你的 profile> add dsh-energy-orb --registry=https://registry.npmjs.org/
+dsh plugin --profile=<你的 profile> add @dsh-fly/dsh-energy-orb --registry=https://registry.npmjs.org/
 ```
 
 装完**必须重启 `dsh web`**：引擎把客户端包缓存在进程内，只刷新页面不够。

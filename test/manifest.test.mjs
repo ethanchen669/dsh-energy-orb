@@ -8,7 +8,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 test('package.json declares the bundle manifest', () => {
   const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
-  assert.equal(pkg.name, 'dsh-energy-orb');
+  assert.equal(pkg.name, '@dsh-fly/dsh-energy-orb');
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml');
   assert.equal(pkg.dsh.client.platform, 'web');
   for (const key of ['.', './client', './icon']) {
@@ -16,10 +16,19 @@ test('package.json declares the bundle manifest', () => {
   }
 });
 
-test('cordis.patch.yml inserts the dsh-energy-orb row', () => {
+test('cordis.patch.yml 的行名 == npm 包名（scoped 也要逐字一致）', () => {
+  const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
   const yml = readFileSync(join(ROOT, 'cordis.patch.yml'), 'utf8');
   assert.match(yml, /id:\s*['"]?dsh-energy-orb/);
-  assert.match(yml, /name:\s*['"]?dsh-energy-orb/);
+  // 行 name 必须是完整包名：loader 按它解析包、客户端半边按它登记（与 @dsh-fly/dsh-plugin-fly-skins 同款）
+  assert.ok(yml.includes(`name: '${pkg.name}'`), `patch 行名与包名不一致：期望 name: '${pkg.name}'`);
+});
+
+test('client 半边的 ModuleLoader id == npm 包名（scoped 时不是裸名）', () => {
+  const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+  const client = readFileSync(join(ROOT, 'client.js'), 'utf8');
+  assert.ok(client.includes(`id: '${pkg.name}',`),
+    `client.js 的 ModuleLoader id 必须是完整包名（期望 ${pkg.name}）—— 否则浏览器端的模块图对不上`);
 });
 
 test('index.js is loadable ESM exposing apply()', async () => {

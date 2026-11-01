@@ -1,8 +1,9 @@
 {
-  "name": "dsh-energy-orb",
+  "name": "@dsh-fly/dsh-energy-orb",
   "version": "0.1.0",
   "description": "Web3D energy orb for the DeepSeek Harness Web GUI: a status-only decoration that shrinks and goes silent while idle and heart-beats while a turn runs.",
   "type": "module",
+  "main": "index.js",
   "license": "MIT",
   "keywords": [
     "dsh",

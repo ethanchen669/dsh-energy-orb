@@ -45,7 +45,9 @@ test('契约脚本与 dsh-fly 主仓逐字节相同（本机有主仓时才比�
 test('package.json 的锁定身份字段与主仓约定一致', () => {
   const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
   // 主仓 auditLockedPlugins 用 name/version 与锁比对；这里只是提醒别写歧义值。
-  assert.equal(pkg.name, 'dsh-energy-orb');
+  assert.equal(pkg.name, '@dsh-fly/dsh-energy-orb');
+  // 锁文件（dsh-fly plugins.lock.json）按**完整包名**登记；路径仍是仓库目录名。
+  assert.ok(pkg.publishConfig?.access === 'public', '作用域包必须显式声明 publishConfig.access = public');
   assert.match(pkg.version, /^\d+\.\d+\.\d+/);
   assert.ok(pkg.repository?.url === 'git+https://github.com/ethanchen669/dsh-energy-orb.git',
     `repository.url 必须与仓地址逐字一致（provenance 会校验）：${pkg.repository?.url}`);

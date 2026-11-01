@@ -18,7 +18,7 @@ npm stage publish --access public --registry=https://registry.npmjs.org/
 
 ## 一次性：Trusted Publisher（首版之后）
 
-npm → `dsh-energy-orb` → **Settings → Trusted Publisher**：
+npm → `@dsh-fly/dsh-energy-orb` → **Settings → Trusted Publisher**：
 
 ```
 Publisher            GitHub Actions
@@ -71,19 +71,19 @@ node --test scripts/tests/plugin-lock.spec.mjs        # 锁的尺子（存在/�
 
 ```bash
 # ① attestation（最早到，读发布记录，不受 CDN 缓存影响）
-curl -s -o /dev/null -w '%{http_code}\n' https://registry.npmjs.org/-/npm/v1/attestations/dsh-energy-orb@X.Y.Z
-curl -s -o /dev/null -w '%{http_code}\n' https://registry.npmjs.org/-/npm/v1/attestations/dsh-energy-orb@99.99.99   # 必须 404（对照）
+curl -s -o /dev/null -w '%{http_code}\n' https://registry.npmjs.org/-/npm/v1/attestations/@dsh-fly%2Fdsh-energy-orb@X.Y.Z
+curl -s -o /dev/null -w '%{http_code}\n' https://registry.npmjs.org/-/npm/v1/attestations/@dsh-fly%2Fdsh-energy-orb@99.99.99   # 必须 404（对照）
 
 # ② dist-tags + readme 快照（换缓存键再看）
-npm view dsh-energy-orb version --registry=https://registry.npmjs.org/ --prefer-online
+npm view @dsh-fly/dsh-energy-orb version --registry=https://registry.npmjs.org/ --prefer-online
 
 # ③ tarball 直取
-curl -sI https://registry.npmjs.org/dsh-energy-orb/-/dsh-energy-orb-X.Y.Z.tgz | head -1
+curl -sI https://registry.npmjs.org/@dsh-fly/dsh-energy-orb/-/dsh-energy-orb-X.Y.Z.tgz | head -1
 
 # ④ 装一遍（最重要：发布成功 ≠ 能装）
 S=$(mktemp -d /tmp/fly-install-XXXXXX) && cd "$S"
 DSH_HOME="$S" dsh --profile fresh --from-default-profile web --dump-config >/dev/null
-DSH_HOME="$S" dsh plugin --profile fresh add dsh-energy-orb@X.Y.Z --registry=https://registry.npmjs.org/
+DSH_HOME="$S" dsh plugin --profile fresh add @dsh-fly/dsh-energy-orb@X.Y.Z --registry=https://registry.npmjs.org/
 DSH_HOME="$S" dsh --profile fresh --dump-config | grep -c 'id: dsh-energy-orb'   # ≥ 1
 ```
 

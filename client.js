@@ -2,7 +2,7 @@
 // 球体绘制是 apps/energy-sphere-demo 的 vendored 副本（client/sphere/），经资产路由懒加载；
 // 加载/WebGL 失败一律降级成 CSS 球（不空白、不炸页）。
 window.__ModuleLoader__.load({
-  id: 'dsh-energy-orb',
+  id: '@dsh-fly/dsh-energy-orb',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
