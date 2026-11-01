@@ -54,6 +54,19 @@ GIT_SSH_COMMAND="ssh -o Hostname=ssh.github.com -o Port=443 -o ServerAliveInterv
   git push origin refs/tags/vX.Y.Z
 ```
 
+## 发完后：回 dsh-fly 跟锁
+
+本仓被主仓 `plugins.lock.json` 登记（外部插件）。发布 + 打 tag 之后回主仓更新锁并提交：
+
+```bash
+cd ~/ai-workspace/dsh-fly
+# plugins.lock.json → "dsh-energy-orb": { version, sha, tag }
+node --test scripts/tests/plugin-lock.spec.mjs        # 锁的尺子（存在/名字/版本/sha 不落后 + 共享脚本逐字节一致）
+```
+
+主仓 `auditLockedPlugins()` 的判据：兄弟仓在工作区、`package.json` 的 name/version 与锁一致、
+锁里的 `sha` 仍是插件仓 HEAD 的祖先、且 `scripts/` 四个契约脚本与主仓逐字节相同。
+
 ## 发布后验收（本仓已实测的姿势）
 
 ```bash

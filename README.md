@@ -104,6 +104,10 @@ node scripts/vendor-sphere.mjs --check     # vendored 资产与上游 demo 是�
 node scripts/shoot-readme.mjs              # 重出 README 效果图（docs/images/*.png）
 ```
 
+本仓同时被 `dsh-fly` 的 [`plugins.lock.json`](https://github.com/ethanchen669/dsh-fly/blob/main/plugins.lock.json) 登记为外部插件：
+`scripts/` 下四个契约脚本（构建器 / 源哈希 / 两道署名闸门）必须是主仓同名脚本的**逐字节副本**
+（`npm test` 里有一条比对，主仓在本机时生效；主仓门禁会以同样的尺子量这里）。
+
 发版流程（首次 `npm stage publish` → 配 Trusted Publisher → 之后推 tag 自动发）见
 [`docs/publishing.md`](https://github.com/ethanchen669/dsh-energy-orb/blob/main/docs/publishing.md)。
 

@@ -49,7 +49,8 @@
     "verify:host": "node scripts/verify-host.mjs",
     "verify:visual": "node scripts/verify-visual.mjs",
     "vendor:check": "node scripts/vendor-sphere.mjs --check",
-    "shoot:readme": "node scripts/shoot-readme.mjs"
+    "shoot:readme": "node scripts/shoot-readme.mjs",
+    "check:identity": "node scripts/check-commit-identity.mjs --all"
   },
   "dsh": {
     "bundle": {
