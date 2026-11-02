@@ -235,6 +235,7 @@ test('隐藏/展开：默认展开；点隐藏按钮折叠成 40px 把手并落�
     const hideButton = findOneByData(root(), 'data-dsh-energy-orb-hide');
     assert.ok(hideButton, '默认应有隐藏按钮');
     assert.equal(hideButton.props['aria-label'], '隐藏能量球');
+    assert.equal(hideButton.props.title, undefined, '不许再设原生 title：它会和自绘气泡叠成两个 tooltip');
     // hover 提示：× 按钮里带一个"隐藏 / hide"标签（纯 CSS 显隐），读屏器走 aria-label
     const hideLabel = findByData(root(), 'data-dsh-energy-orb-hide-label')[0];
     assert.ok(hideLabel, '× 按钮里应有悬浮提示节点');
@@ -292,6 +293,58 @@ test('老存档没有 collapsed 字段 → 按展开处理（迁移不许把球�
     assert.equal(tree.props['data-dsh-energy-orb-collapsed'], 'false');
     assert.equal(findOneByData(tree, 'data-dsh-energy-orb-stage').props.style.opacity, 1);
   } finally {
+    m.stub.unmount();
+    m.restore();
+    mem.delete('energy-orb.display');
+  }
+});
+
+test('折叠态的把手也能拖：按住移动改位置、不触发展开；轻点仍展开', async () => {
+  STUB_CALLS.length = 0;
+  mem.delete('energy-orb.display');
+  const listeners = new Map();
+  const origAdd = globalThis.window.addEventListener;
+  const origRemove = globalThis.window.removeEventListener;
+  globalThis.window.addEventListener = (n, fn) => listeners.set(n, fn);
+  globalThis.window.removeEventListener = (n) => listeners.delete(n);
+  const m = await mount({ assets: { sphere: OK_SPHERE } });
+  try {
+    let tree = m.stub.render(m.OrbComponent);
+    findOneByData(tree, 'data-dsh-energy-orb-hide').props.onClick({ stopPropagation() {} });
+    tree = m.stub.render(m.OrbComponent);
+    const handle = findOneByData(tree, 'data-dsh-energy-orb-handle');
+
+    // ① 按住拖动 40px → offset 写回，仍是折叠态（没被误触展开）
+    handle.props.onPointerDown({ button: 0, clientX: 100, clientY: 100, stopPropagation() {} });
+    listeners.get('pointermove')({ clientX: 140, clientY: 130 });
+    m.stub.render(m.OrbComponent);         // React 会在 pointerup 前重渲染
+    listeners.get('pointerup')();
+    const saved = JSON.parse(mem.get('energy-orb.display'));
+    assert.deepEqual(saved.offset, { x: 40, y: 30 }, '折叠态拖拽也要写回 offset');
+    assert.equal(saved.collapsed, true, '拖拽不许把折叠态改掉');
+    // 拖完浏览器补的 click 必须被吞掉（否则"拖一下就展开"了）
+    const handleAfterDrag = findOneByData(m.stub.render(m.OrbComponent), 'data-dsh-energy-orb-handle');
+    handleAfterDrag.props.onClick({ stopPropagation() {} });
+    assert.equal(JSON.parse(mem.get('energy-orb.display')).collapsed, true, '拖拽尾巴的 click 不该展开');
+
+    // ② 轻点（不移动）→ 走 click 展开
+    const fresh = (await mount({ assets: { sphere: OK_SPHERE } }));
+    try {
+      let t = fresh.stub.render(fresh.OrbComponent);
+      findOneByData(t, 'data-dsh-energy-orb-hide').props.onClick({ stopPropagation() {} });
+      t = fresh.stub.render(fresh.OrbComponent);
+      const h2 = findOneByData(t, 'data-dsh-energy-orb-handle');
+      h2.props.onPointerDown({ button: 0, clientX: 10, clientY: 10, stopPropagation() {} });
+      listeners.get('pointerup')();                     // 没移动
+      h2.props.onClick({ stopPropagation() {} });        // 浏览器随后补的 click
+      assert.equal(JSON.parse(mem.get('energy-orb.display')).collapsed, false, '轻点应展开');
+    } finally {
+      fresh.stub.unmount();
+      fresh.restore();
+    }
+  } finally {
+    globalThis.window.addEventListener = origAdd;
+    globalThis.window.removeEventListener = origRemove;
     m.stub.unmount();
     m.restore();
     mem.delete('energy-orb.display');

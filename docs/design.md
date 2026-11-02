@@ -66,6 +66,18 @@ type EnergyOrbState = {
 旁边带一个 `data-dsh-energy-orb-hide-label` 的「隐藏 / hide」气泡）；折叠态缩成 40px 的
 `data-dsh-energy-orb-handle` 把手（`<button>`，`aria-label="展开能量球"`，箭头 ↘/↙ 朝向展开方向）。
 
+**拖拽手势（舞台与把手共用）**：`beginGesture()` 以 3px 为阈值区分"轻点"与"拖拽"——移动超过阈值就改
+`offset` 并在 `pointerup` 时落盘，否则算轻点（舞台=充能脉冲、把手=展开）。偏移在拖拽期间**本地累计**，
+落盘用 `commitPrefs()`（同时更新 state 与 `prefsRef`）：fixture/极简渲染器不重渲染时，只靠 `setPrefs`
+会让 `prefsRef` 停在挂载时的旧值（实测把 `collapsed:true` 写回 `false`）。拖拽尾部的 click 由
+`draggedRef` 吞掉，所以"拖完松开"不会顺手把球展开（注意：把手会跟着光标走，所以那次尾巴 click 通常就落在把手上）。
+
+**拖拽要 1:1 跟手**（2026-11-02 实测修正）：根节点的 `width/height/bottom/left` 有 220ms 过渡（折叠动效用），
+拖拽期间每次 `pointermove` 都写 `bottom/left`，就会被这层过渡「拖着追」——实测滞后峰值 **43.5px**。
+所以拖拽一开始就把根节点 `transition` 置 `none`、松手再恢复；并且用 rAF 合并提交（每帧最多一次
+`setPrefs`）。修完滞后峰值降到 **9.4px**（残余是 rAF 采样本身的相位差）。门禁里钉了这两条：拖拽期间
+盒子位移 vs 光标位移偏差 < 20px；折叠态拖拽后盒子**真的**位移。
+
 **动效是同一组属性的逆过程**（`COLLAPSE_MS = 220`）：根节点宽度/高度/定位边一起过渡，舞台
 `opacity 1↔0` + `scale 1↔0.32`，把手 `opacity 0↔1` + `scale 0.85↔1`，两侧 duration 相同——所以展开就是
 把收起的曲线倒着走，不会出现"收起顺滑、展开硬切"。

@@ -26,8 +26,16 @@ window.__ModuleLoader__.load({
     const RAMP_MS = 420;
     /** 折叠后小把手的边长（px）：要小到"不占地方"，又要大到点得中（40 是触控下限附近）。 */
     const HANDLE_SIZE = 40;
+    /** 拖拽判定阈值（px）：小于它算「轻点」。 */
+    const DRAG_THRESHOLD = 3;
     /** 折叠动画时长：根节点尺寸、舞台缩放淡出、把手缩放淡入**共用**，两个方向才是同一组过渡的逆过程。 */
     const COLLAPSE_MS = 220;
+    /**
+     * 根节点（定位框）的过渡：折叠/展开动画用。
+     * **拖拽期间必须临时关掉**——否则每次 pointermove 写 bottom/left 都会被 220ms 过渡拖住，
+     * 实测滞后峰值 43.5px（手指/光标已经走远、盒子还在半路追）。
+     */
+    const ROOT_TRANSITION = `width ${COLLAPSE_MS}ms ease, height ${COLLAPSE_MS}ms ease, bottom ${COLLAPSE_MS}ms ease, left ${COLLAPSE_MS}ms ease`;
     /** 折叠把手/隐藏按钮的样式（一次注入，避免每帧拼样式字符串）。 */
     const CHROME_CSS = [
       '.energyOrb-hide{opacity:0;transition:opacity 160ms ease}',
@@ -267,9 +275,25 @@ window.__ModuleLoader__.load({
       const stageRef = React.useRef(null);
       const handleRef = React.useRef(null);
       const hideRef = React.useRef(null);
+      /** 刚拖过把手：浏览器随后补的 click 要吞掉（否则拖完顺手就展开了）。 */
+      const draggedRef = React.useRef(false);
       const prefsRef = React.useRef(prefs);
       const lastStateRef = React.useRef(null);
+      const applyFrameDomRef = React.useRef(() => {});
       prefsRef.current = prefs;
+      /**
+       * 写偏好：**同时**更新 state 与 prefsRef。
+       * 为什么不能只 setPrefs：真 React 会重渲染并刷新 prefsRef，但 fixture / 极简渲染器不会，
+       * 那边 ref 会一直是"挂载那一刻"的值 —— 落盘时就会把 collapsed 之类的字段写回旧值
+       * （实测：折叠后拖把手 60px，localStorage 里 collapsed 被写回 false）。
+       */
+      const commitPrefs = (next) => {
+        const normalized = normalizePrefsShape(next);
+        prefsRef.current = normalized;
+        setPrefs(normalized);
+        applyFrameDomRef.current();
+        return normalized;
+      };
 
       // 初始化球体 + 轮询；卸载时全部释放
       React.useEffect(() => {
@@ -380,25 +404,63 @@ window.__ModuleLoader__.load({
 
       // 记录最近一次状态，供球体 late-init 后立即对齐
 
-      // 拖拽改 offset（存 localStorage）；纯点击充能 = 一次本地脉冲
-      const onPointerDown = (e) => {
+      /**
+       * 通用手势（舞台与折叠把手共用）：按住移动 = 拖拽改 offset 并落盘；没移动的轻点 = onTap。
+       * 阈值 DRAG_THRESHOLD：触控板/鼠标的轻微抖动不算拖拽。
+       */
+      const beginGesture = (e, onTap) => {
+        if (e.button !== undefined && e.button !== 0) return;
         const start = { x: e.clientX, y: e.clientY, ox: prefsRef.current.offset.x, oy: prefsRef.current.offset.y };
+        // 偏移在拖拽期间**本地累计**：不依赖"重渲染刷新 prefsRef"。真 React 会重渲染，
+        // 但 fixture / 极简渲染器不会 —— 那边 prefsRef 永远是按下那一刻的旧值，
+        // 于是每帧从原偏移重算、结束时又按旧值落盘（实测：拖了 60px，localStorage 还是 0）。
+        let offset = { x: start.ox, y: start.oy };
         let moved = false;
+        let frame = 0;                        // 拖拽期间的 rAF 句柄（同一帧只提交一次）
+        const flush = () => {
+          frame = 0;
+          commitPrefs({ ...prefsRef.current, offset });
+        };
         const move = (ev) => {
-          moved = true;
-          setPrefs(normalizePrefsShape({
-            ...prefsRef.current,
-            offset: { x: start.ox + ev.clientX - start.x, y: start.oy + ev.clientY - start.y },
-          }));
+          const dx = ev.clientX - start.x;
+          const dy = ev.clientY - start.y;
+          if (!moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+          if (!moved) {
+            moved = true;
+            const root = rootRef.current;
+            // 拖拽要 1:1 跟手：关掉定位框的 220ms 过渡（否则盒子永远慢半拍）
+            if (root && root.style) root.style.transition = 'none';
+          }
+          offset = { x: start.ox + dx, y: start.oy + dy };
+          // 每帧最多一次状态更新；没有 rAF 的环境（node 测试桩）就直接提交
+          if (!frame) {
+            frame = typeof window.requestAnimationFrame === 'function'
+              ? window.requestAnimationFrame(flush)
+              : (flush(), 1);
+          }
         };
         const up = () => {
           window.removeEventListener('pointermove', move);
           window.removeEventListener('pointerup', up);
-          if (moved) savePrefs(window.localStorage, prefsRef.current);
-          else if (sphereRef.current && sphereRef.current.pulse) sphereRef.current.pulse(1.2);   // 纯点击才充能，拖拽不算
+          if (frame && typeof window.cancelAnimationFrame === 'function') { window.cancelAnimationFrame(frame); frame = 0; }
+          const root = rootRef.current;
+          if (root && root.style) root.style.transition = ROOT_TRANSITION;   // 拖完把过渡还回去（折叠动画还需要）
+          if (moved) {
+            savePrefs(window.localStorage, commitPrefs({ ...prefsRef.current, offset }));
+            draggedRef.current = true;         // 拖拽后浏览器会补一个 click：吞掉它
+          } else if (onTap) {
+            onTap();
+          }
         };
         window.addEventListener('pointermove', move);
         window.addEventListener('pointerup', up);
+      };
+
+      // 舞台：拖拽改 offset；纯点击（无位移）充能一次
+      const onPointerDown = (e) => {
+        beginGesture(e, () => {
+          if (sphereRef.current && sphereRef.current.pulse) sphereRef.current.pulse(1.2);
+        });
       };
 
       // 拖拽 offset 语义：右拖 x+ → 球向右；下拖 y+ → 球向下。
@@ -448,23 +510,36 @@ window.__ModuleLoader__.load({
         // 收起时越界的画面裁掉，配合舞台的 top-right 缩放原点，视觉上"缩进 × 那个角"
         overflow: 'hidden',
         transformOrigin: 'top right',
-        transition: `width ${COLLAPSE_MS}ms ease, height ${COLLAPSE_MS}ms ease, bottom ${COLLAPSE_MS}ms ease, left ${COLLAPSE_MS}ms ease`,
+        transition: ROOT_TRANSITION,
       };
 
       const active = !!(lastState && lastState.active);
       /** 改折叠状态并落盘；展开/隐藏都走这一条，避免两处状态不同步。 */
+      /**
+       * 把定位框（宽高 + 四条边）立即写到 DOM。
+       * 拖拽期间**必须**这么做：真 React 会因 setPrefs 重渲染而挪位置，但 fixture/极简渲染器不会，
+       * 那边就"拖了没反应"（实测：localStorage 变了、盒子纹丝不动）。
+       */
+      const applyFrameDom = () => {
+        const root = rootRef.current;
+        if (!root || !root.style) return;
+        const frame = frameStyle(prefsRef.current.collapsed === true, prefsRef.current);
+        root.style.width = frame.width;
+        root.style.height = frame.height;
+        root.style.right = frame.right;
+        root.style.left = frame.left;
+        root.style.bottom = frame.bottom;
+      };
+
+      applyFrameDomRef.current = applyFrameDom;
+
       /** 把折叠状态**立即**落到 DOM 上（与 render 里的初始值同形；幂等）。 */
       const applyCollapsedDom = (next) => {
         const collapsedNow = next === true;
         const root = rootRef.current;
         if (root && root.style) {
           root.setAttribute('data-dsh-energy-orb-collapsed', collapsedNow ? 'true' : 'false');
-          const next = frameStyle(collapsedNow, prefsRef.current);
-          root.style.width = next.width;
-          root.style.height = next.height;
-          root.style.right = next.right;
-          root.style.left = next.left;
-          root.style.bottom = next.bottom;
+          applyFrameDom();
         }
         const stage = stageRef.current;
         if (stage && stage.style) {
@@ -487,8 +562,7 @@ window.__ModuleLoader__.load({
       };
 
       const setCollapsed = (next) => {
-        const updated = normalizePrefsShape({ ...prefsRef.current, collapsed: next });
-        setPrefs(updated);
+        const updated = commitPrefs({ ...prefsRef.current, collapsed: next });
         savePrefs(window.localStorage, updated);
         applyCollapsedDom(next);
         // 折叠时把球体冻住（rAF 不空转、不白烧 GPU），展开立刻恢复
@@ -507,9 +581,16 @@ window.__ModuleLoader__.load({
         'data-dsh-energy-orb-handle': '',
         'aria-label': '展开能量球',
         'aria-expanded': !collapsed,
-        title: '展开能量球',
+        // 不设 title：原生 tooltip 会和自绘气泡叠成两个（实测截图里就是一灰一青两个框）
         tabIndex: collapsed ? 0 : -1,
         style: {
+          // **绝对定位**：把手不参与文档流。早前它是 display:flex 的 240×240 块，
+          // 把舞台挤到根盒子外面，再被根节点的 overflow:hidden 裁掉 —— 真机上就是"球不见了、hover 只有 ×"。
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
           // 与舞台同一组属性、同一个时长，只是端点反过来：展开时把手缩小淡出、舞台放大淡入
           opacity: collapsed ? 1 : 0,
           transform: `scale(${collapsed ? 1 : 0.85})`,
@@ -518,9 +599,17 @@ window.__ModuleLoader__.load({
         },
         onClick: (event) => {
           event.stopPropagation();
+          if (draggedRef.current) {            // 刚拖过：这次 click 是拖拽的尾巴，不算"点开"
+            draggedRef.current = false;
+            return;
+          }
           setCollapsed(false);
         },
-        onPointerDown: (event) => event.stopPropagation(),
+        // 折叠态也能拖：按住移动 = 改位置（轻点仍然由上面的 click 负责展开，键盘 Enter/Space 同样有效）
+        onPointerDown: (event) => {
+          event.stopPropagation();
+          beginGesture(event, null);
+        },
       }, prefs.anchor === 'bottom-left' ? '↘' : '↙');
 
       // 隐藏按钮：展开态右上角，平时透明、hover/focus 显形（不抢拖拽的面子）
@@ -532,7 +621,7 @@ window.__ModuleLoader__.load({
         'data-dsh-energy-orb-hide': '',
         'aria-label': '隐藏能量球',
         'aria-expanded': !collapsed,
-        title: '隐藏能量球',
+        // 不设 title：同上，悬浮提示由 .energyOrb-hideLabel 自绘
         style: {
           display: collapsed ? 'none' : 'block',
           position: 'absolute',
