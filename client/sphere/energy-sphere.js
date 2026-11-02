@@ -9,6 +9,28 @@ import { assertContainer, normalizeOptions, validatePulseStrength } from './opti
 
 const TAU = Math.PI * 2;
 export const CORE_VISUAL_SCALE = 1.22;
+/**
+ * 三个外环的主管径。调参轨迹：0.007 → 0.018 → 0.036 → 0.18（太粗）→ 0.045（0.18 的 1/4）→ 0.035 → **0.025**。细线在 Bloom 里读不出转速，加粗是提升动效冲击力的正向项，但 0.18 会把
+ * 环读成"齿轮/舷窗"并遮住核心，0.045 是"看得出带子、又保留通透"的位置。
+ */
+export const RING_TUBE_RADIUS = 0.025;
+/** 环上短弧的管径区间（≈0.95–1.22 × 主管径：短弧要比主管更亮才读得出"分段"） */
+export const RING_ARC_TUBE = [RING_TUBE_RADIUS * 0.95, RING_TUBE_RADIUS * 1.22];
+/**
+ * 环上亮点的半径。用户口径演进：1.5 × 环厚（1~2px，读不出来）→ 2.2 × 环厚（仍只比环带粗 0.2px）
+ * → **直径 = 4 × 环厚**（半径 = 2 × 管径）。在 240px 画布上约 3.7px，肉眼是清楚的圆点。
+ */
+export const RING_NODE_RADIUS = RING_TUBE_RADIUS * 2;
+/** 刻度针的尺寸/站位都**按管径成比例**，这样以后调粗细时不用再改三处魔法数。 */
+export const RING_TICK_BOX = [RING_TUBE_RADIUS * 0.33, RING_TUBE_RADIUS * 2.08, RING_TUBE_RADIUS * 0.33];
+export const RING_TICK_OFFSET = [RING_TUBE_RADIUS * 2.5, RING_TUBE_RADIUS * 1.53];   // [大刻度, 小刻度]
+
+/**
+ * 能量球（核心）自转角速度 / 最快环角速度。静息与运行**同一个比例**：
+ * 核心 = 0.6 × 环1。核心偏航与内部小环都用它，于是"球转得比环慢一点"是结构性的，
+ * 不依赖某个状态下的绝对乘子。
+ */
+export const CORE_SPIN_RATIO = 0.6;
 
 export const OUTER_RING_DEFINITIONS = [
   { radius: 3, seed: 81, density: 14, rotation: [0, 0, 0], speed: 0.11, viewPlane: true },
@@ -238,7 +260,7 @@ function createCore(color, pixelRatio) {
   return { group, shaderMaterials, colorMaterials, surfaceMaterial, innerRing };
 }
 
-function createRing(radius, color, seed, density = 12) {
+export function createRing(radius, color, seed, density = 12) {
   const random = randomGenerator(seed);
   const group = new THREE.Group();
   const spin = new THREE.Group();
@@ -248,7 +270,7 @@ function createRing(radius, color, seed, density = 12) {
     color, transparent: true, opacity: 0.13, depthWrite: false, blending: THREE.AdditiveBlending,
   });
   materials.push(baseMaterial);
-  spin.add(new THREE.Mesh(new THREE.TorusGeometry(radius, 0.007, 4, 256), baseMaterial));
+  spin.add(new THREE.Mesh(new THREE.TorusGeometry(radius, RING_TUBE_RADIUS, 12, 256), baseMaterial));
 
   for (let index = 0; index < density; index += 1) {
     const start = (index / density) * TAU + random() * 0.08;
@@ -261,7 +283,8 @@ function createRing(radius, color, seed, density = 12) {
       blending: THREE.AdditiveBlending,
     });
     materials.push(material);
-    const mesh = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.009 + random() * 0.009, 5, 36, arc), material);
+    const arcTube = RING_ARC_TUBE[0] + random() * (RING_ARC_TUBE[1] - RING_ARC_TUBE[0]);
+    const mesh = new THREE.Mesh(new THREE.TorusGeometry(radius, arcTube, 10, 36, arc), material);
     mesh.rotation.z = start;
     mesh.position.z = (random() - 0.5) * 0.07;
     spin.add(mesh);
@@ -272,11 +295,14 @@ function createRing(radius, color, seed, density = 12) {
   });
   materials.push(tickMaterial);
   const tickCount = 96;
-  const ticks = new THREE.InstancedMesh(new THREE.BoxGeometry(0.012, 0.075, 0.012), tickMaterial, tickCount);
+  const ticks = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(RING_TICK_BOX[0], RING_TICK_BOX[1], RING_TICK_BOX[2]), tickMaterial, tickCount,
+  );
   const transform = new THREE.Object3D();
   for (let index = 0; index < tickCount; index += 1) {
     const angle = (index / tickCount) * TAU;
-    const tickRadius = radius + (index % 8 === 0 ? 0.09 : 0.055);
+    // 刻度针站在管外（偏移随管径成比例，否则粗管会把针埋住、细管会让针飘太远）
+    const tickRadius = radius + (index % 8 === 0 ? RING_TICK_OFFSET[0] : RING_TICK_OFFSET[1]);
     transform.position.set(Math.cos(angle) * tickRadius, Math.sin(angle) * tickRadius, 0);
     transform.rotation.z = angle - Math.PI / 2;
     transform.scale.y = index % 8 === 0 ? 1.8 : 0.55;
@@ -290,8 +316,10 @@ function createRing(radius, color, seed, density = 12) {
   });
   for (let index = 0; index < 5; index += 1) {
     const angle = random() * TAU;
-    const node = new THREE.Mesh(new THREE.SphereGeometry(0.025 + random() * 0.018, 6, 6), nodeMaterial);
-    node.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.02);
+    const node = new THREE.Mesh(new THREE.SphereGeometry(RING_NODE_RADIUS, 12, 12), nodeMaterial);
+    // 亮点整个抬到管子外沿（贴太深会被管体吞掉，只剩一点糊光）
+    const nodeRadius = radius + RING_TUBE_RADIUS * 1.0;
+    node.position.set(Math.cos(angle) * nodeRadius, Math.sin(angle) * nodeRadius, 0.02);
     spin.add(node);
   }
   return { group, spin, materials };
@@ -346,6 +374,7 @@ export function createEnergySphere(container, initialOptions = {}) {
   let contextLost = false;
   let frameId = null;
   let coreElapsed = 0;
+  let coreShaderTime = 0;   // 表面等离子体时间：与心跳解耦，静息也流动
   let coreYaw = 0;      // 核心偏航累计角（增量积分，乘子变化不回卷）
   let innerSpin = 0;    // 内环自转累计角（同上）
   let lastTime = performance.now();
@@ -463,7 +492,7 @@ export function createEnergySphere(container, initialOptions = {}) {
     core.group.scale.setScalar(scale);
     core.group.rotation.y = coreYaw;
     core.group.rotation.x = Math.sin(coreElapsed * 0.17) * 0.035;
-    core.surfaceMaterial.uniforms.uTime.value = coreElapsed;
+    core.surfaceMaterial.uniforms.uTime.value = coreShaderTime;
     core.surfaceMaterial.uniforms.uBeat.value = pulse;
     for (const material of core.shaderMaterials) {
       if (material.uniforms.uBrightness) material.uniforms.uBrightness.value = options.coreBrightness;
@@ -497,8 +526,13 @@ export function createEnergySphere(container, initialOptions = {}) {
         updateRingPose(ring, OUTER_RING_DEFINITIONS[index], delta, options.rotationSpeed);
       });
       // 自转全部走增量积分：速度乘子只影响未来角，状态切换不会把历史角重算成"糊影"。
-      coreYaw += delta * 0.055 * options.rotationSpeed;
-      innerSpin += delta * 0.2 * options.rotationSpeed;
+      // 核心自转 = 0.6 × 最快环（静息与运行同一比例）；内部小环跟随核心同速。
+      const coreRate = OUTER_RING_DEFINITIONS[0].speed * CORE_SPIN_RATIO;
+      // 表面等离子体与心跳解耦（静息也在流动），但**跟随旋转乘子**：
+      // rotationSpeed = 0 是"冻结"语义（reduced motion / 定帧测试），那时一帧都不许变。
+      if (options.rotationSpeed > 0) coreShaderTime += delta;
+      coreYaw += delta * coreRate * options.rotationSpeed;
+      innerSpin += delta * coreRate * options.rotationSpeed;
       // 灰尘系数 0.018 → 0.06：细圆的转动本身不可见（圆旋转对称），粒子场才是速度的主要视觉线索。
       dustMaterial.rotation.z -= delta * 0.06 * options.rotationSpeed;
       if (options.heartbeatEnabled) coreElapsed += delta;

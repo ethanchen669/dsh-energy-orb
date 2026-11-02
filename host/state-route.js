@@ -34,6 +34,26 @@ export function isLoopbackRequest(req) {
   return isLoopbackSocket && isLoopbackHost && siteOk;
 }
 
+/**
+ * 从 `?session=<id>` 取焦点会话（客户端切换会话时带上）。校验很紧：
+ * 只允许 id 合法字符与长度 ≤128，任何不合法的值一律当"没传"（退回全局口径），
+ * 不让任意字符串进到 Set 查找与错误信息里。
+ */
+export function readSessionQuery(url) {
+  const raw = String(url ?? '');
+  const index = raw.indexOf('?');
+  if (index === -1) return undefined;
+  let params;
+  try {
+    params = new URLSearchParams(raw.slice(index + 1));
+  } catch {
+    return undefined;
+  }
+  const value = params.get('session');
+  if (typeof value !== 'string' || value === '') return undefined;
+  return /^[A-Za-z0-9_:.-]{1,128}$/.test(value) ? value : undefined;
+}
+
 function deny(res) {
   res.writeHead(403, {
     'content-type': 'text/plain; charset=utf-8',
@@ -57,7 +77,7 @@ export function registerStateRoute(ctx, projector) {
         deny(res);
         return;
       }
-      const body = JSON.stringify(projector.snapshot());
+      const body = JSON.stringify(projector.snapshot(readSessionQuery(req.url)));
       res.writeHead(200, {
         'content-type': 'application/json; charset=utf-8',
         'cache-control': 'no-store',

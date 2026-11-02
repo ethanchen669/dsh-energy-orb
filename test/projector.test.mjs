@@ -71,3 +71,18 @@ test('长回合不会被自己的时间戳判死：持续 30s 每 2s 快照，ac
     assert.ok(now() - s.updatedAt <= 10_000);
   }
 });
+
+test('按会话过滤：只有传入的那个会话在跑才 active（切换左侧栏会话的绑定基础）', () => {
+  const p = createProjector(() => 1000);
+  p.noteStatus('s-a', true);
+  assert.equal(p.snapshot('s-a').active, true);
+  assert.equal(p.snapshot('s-b').active, false, '另一个在跑的会话不该把焦点会话点亮');
+  assert.equal(p.snapshot().active, true, '不传 session = 全局口径');
+  p.noteStatus('s-a', false);
+  p.noteStatus('s-b', true);
+  assert.equal(p.snapshot('s-a').active, false);
+  assert.equal(p.snapshot('s-b').active, true);
+  assert.equal(p.snapshot().active, true);
+  assert.equal(p.snapshot('s-c').intensity, 0);
+  assert.equal(p.snapshot('s-c').phase, 'idle');
+});

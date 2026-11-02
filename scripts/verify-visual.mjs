@@ -146,10 +146,10 @@ try {
     await page.waitForTimeout(500);   // 让首帧 + 一次 ramp 走完
   };
 
-  // 默认偏好（size 96 → 192×192）
+  // 默认偏好（size 120 → 240×240；视图整体等比放大 1.25× 之后的口径）
   await openOverlay(null);
   const box = await page.evaluate(() => window.__rootBox);
-  check('默认尺寸 192×192 且贴在右下角', box && box.width === 192 && box.height === 192 && box.right < 40 && box.bottom < 40,
+  check('默认尺寸 240×240 且贴在右下角', box && box.width === 240 && box.height === 240 && box.right < 40 && box.bottom < 40,
     JSON.stringify(box));
   const idleOverlay = await page.evaluate(() => window.__readOrbPixels());
   check('悬浮层静息态有像素', !idleOverlay.error && idleOverlay.lit > 2000, JSON.stringify(idleOverlay));
@@ -163,9 +163,11 @@ try {
   await page.evaluate(async () => { await fetch('/__fixture/state?active=1'); });
   await page.waitForTimeout(3200);
   const activeOverlay = await page.evaluate(() => window.__readOrbPixels());
-  check('悬浮层静息→激活：核心变大变亮（真轮询 + ramp 生效）',
-    activeOverlay.coreMeanGreen > idleOverlay.coreMeanGreen * 1.15,
-    `idle=${idleOverlay.coreMeanGreen.toFixed(1)} active=${activeOverlay.coreMeanGreen.toFixed(1)}`);
+  // 口径变化（2026-11-02）：运行态亮度按用户要求降到原来的一半 ⇒ "变亮"不再是状态信号，
+  // 状态信号改成"足迹变大 + 不比静息暗"；亮度数值本身由 sphere-mapping 的单测钉着（0.5 / 0.65 / 0.8）。
+  check('悬浮层静息→激活：核心足迹变大、且不比静息暗（真轮询 + ramp 生效）',
+    activeOverlay.lit > idleOverlay.lit * 1.05 && activeOverlay.coreMeanGreen >= idleOverlay.coreMeanGreen * 0.98,
+    `lit idle=${idleOverlay.lit} active=${activeOverlay.lit} | coreMeanGreen idle=${idleOverlay.coreMeanGreen.toFixed(1)} active=${activeOverlay.coreMeanGreen.toFixed(1)}`);
   await page.locator('[data-dsh-energy-orb-root]').screenshot({ path: join(OUT, 'overlay-active.png') });
   await page.screenshot({ path: join(OUT, 'overlay-active-full.png') });
 
@@ -190,7 +192,8 @@ try {
     `${idleA.coreMeanGreen.toFixed(2)} vs ${idleB.coreMeanGreen.toFixed(2)}`);
 
   // 更大尺寸（size 128 → 256×256）再拍一张，供用户判断"够不够看得清"
-  await openOverlay({ size: 128, anchor: 'bottom-right', offset: { x: 0, y: 0 } });
+  // 传 v:2（当前存档版本）：否则会走一次旧存档迁移 ×1.25，128 会变成 160
+  await openOverlay({ v: 2, size: 128, anchor: 'bottom-right', offset: { x: 0, y: 0 } });
   const bigBox = await page.evaluate(() => window.__rootBox);
   check('自定义尺寸生效（size 128 → 256×256）', bigBox && bigBox.width === 256 && bigBox.height === 256,
     JSON.stringify(bigBox));

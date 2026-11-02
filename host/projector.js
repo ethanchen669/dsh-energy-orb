@@ -17,9 +17,15 @@ export function createProjector(now = () => Date.now()) {
       if (isRunning) running.add(sessionId);
       else running.delete(sessionId);
     },
-    /** @returns {{version:1, active:boolean, intensity:number, phase:'idle'|'active', updatedAt:number}} */
-    snapshot() {
-      const active = running.size > 0;
+    /**
+     * @param {string} [sessionId] 传入则只回答"这一个会话在不在跑"（客户端按主视图焦点会话查询）；
+     *   不传 = 全局口径（任一回合在跑就算 active，兼容没有 sessions 服务的宿主）。
+     * @returns {{version:1, active:boolean, intensity:number, phase:'idle'|'active', updatedAt:number}}
+     */
+    snapshot(sessionId) {
+      const active = sessionId === undefined || sessionId === null
+        ? running.size > 0
+        : running.has(sessionId);
       return {
         version: 1,
         active,

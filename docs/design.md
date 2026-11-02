@@ -35,7 +35,13 @@ Harness 事件 → ActivityProjector → StateRoute →（HTTP 轮询）→ OrbC
 
 | 路由 | 输入 | 输出 | 错误 |
 | --- | --- | --- | --- |
-| `GET /api/energy-orb/state` | — | `200 EnergyOrbState` | `403 forbidden: loopback-only` |
+| `GET /api/energy-orb/state?session=<id>` | 可选：焦点会话 id（`[A-Za-z0-9_:.-]{1,128}`） | `200 EnergyOrbState` | `403 forbidden: loopback-only`；非法/超长 `session` 一律**退回全局口径**（不 4xx） |
+
+**绑定范围（v0.1.2 起）**：客户端把「主视图正在显示的那一个会话」作为焦点会话 ——
+从 `api-session-controller` 的 `sessions` 服务里挑 `retainedBy.mainView > 0` 的那行，
+用它的 `running` 标志决定球的静息/运行，并把 id 带进轮询 URL。切换左侧栏会话时
+订阅 `sessions.list` 立刻重算（不等 2s 轮询）。宿主侧 `snapshot(sessionId)` 按 id 过滤；
+拿不到 `sessions` 服务的宿主（老宿主 / fixture / 极简 profile）退回**全局口径**（任一回合在跑即 active）。
 
 ```ts
 type EnergyOrbState = {

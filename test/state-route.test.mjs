@@ -124,3 +124,21 @@ test('资产路由：白名单内服务（含子目录）、白名单外 404、�
     rmSync(pkg, { recursive: true, force: true });
   }
 });
+
+test('?session= 只回答该会话；非法/超长/空值一律退回全局口径', () => {
+  const projector = createProjector(() => 4242);
+  projector.noteStatus('s-a', true);
+  const route = captureRoute(ctx => registerStateRoute(ctx, projector));
+  const call = (url) => {
+    const res = fakeRes();
+    route.handler(fakeReq({ url }), res);
+    return { status: res.out.status, body: JSON.parse(res.out.body) };
+  };
+  assert.equal(call('/api/energy-orb/state?session=s-a').body.active, true);
+  assert.equal(call('/api/energy-orb/state?session=s-b').body.active, false, '另一个会话在跑不该点亮焦点会话');
+  for (const bad of ['?session=', '?session=%20', `?session=${'x'.repeat(200)}`, '?session=a%2Fb']) {
+    const res = call(`/api/energy-orb/state${bad}`);
+    assert.equal(res.status, 200, `非法 session 应退回全局而不是 4xx：${bad}`);
+    assert.equal(res.body.active, true, `非法 session 应退回全局口径：${bad}`);
+  }
+});

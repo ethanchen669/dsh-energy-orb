@@ -121,12 +121,17 @@ const requireStub = (name) => {
 export function mountComponent(spec) {
   const mod = spec.factory(requireStub);
   let OrbComponent = null;
+  const injectCalls = [];
   mod.apply({
+    // 真 cordis 的客户端 context 同时有 `inject(deps, cb)`（惰性拿服务）与 `slots`。
+    // 桩里默认"服务不可用"（cb 不执行 ⇒ 退回 HTTP 全局口径），需要时用 injectCalls 手动喂服务。
+    inject(deps, cb) { injectCalls.push({ deps, cb }); return () => {}; },
     slots: {
       inject(slot, cb) { return cb(); },
       register(opts, component) { OrbComponent = component; return () => {}; },
     },
   });
+  spec.injectCalls = injectCalls;
   if (typeof OrbComponent !== 'function') throw new Error('apply 未捕获 shell.overlay 组件');
   return { mod, OrbComponent };
 }

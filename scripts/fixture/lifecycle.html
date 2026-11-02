@@ -23,6 +23,9 @@ const mod = window.__spec.factory(requireShim);
 
 let OrbComponent = null;
 mod.apply({
+  // 真 cordis 客户端 context 还有 inject(deps, cb)（惰性拿 sessions 服务）；
+  // fixture 里不给服务 ⇒ 插件退回 HTTP 全局口径（这正是老宿主的形状）
+  inject(deps, cb) { return () => {}; },
   slots: {
     inject(slot, cb) { return cb(); },
     register(opts, component) {

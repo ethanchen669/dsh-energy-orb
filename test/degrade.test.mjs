@@ -132,7 +132,7 @@ test('激活状态到达后 → 心跳打开、参数收敛到激活目标', asy
     const last = patches.at(-1);
     assert.ok(Math.abs(last.coreScale - 1.08) < 0.02, `核心大小应收敛到 1.08：${last.coreScale}`);
     assert.ok(Math.abs(last.bpm - 112) < 1, `心率应收敛到 112：${last.bpm}`);
-    assert.ok(last.coreBrightness > 1.2, `辉光应收敛到 1.3：${last.coreBrightness}`);
+    assert.ok(Math.abs(last.coreBrightness - 0.975) < 1e-9, `辉光应收敛到 0.975（上一版与暗版的中间值）：${last.coreBrightness}`);
   } finally {
     m.stub.unmount();
     m.restore();

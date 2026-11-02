@@ -5,8 +5,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../client/vendor/three.module.min.js';
 import {
+  CORE_SPIN_RATIO,
   CORE_VISUAL_SCALE,
   OUTER_RING_DEFINITIONS,
+  RING_ARC_TUBE,
+  RING_NODE_RADIUS,
+  RING_TUBE_RADIUS,
   createEnergySphere,
   orientRing,
   ringNormal,
@@ -113,4 +117,28 @@ test('无 WebGL 环境：onError 恰一次 + 返回 no-op 句柄（update/pulse/
   assert.doesNotThrow(() => handle.pulse(1.4));
   assert.doesNotThrow(() => handle.dispose());
   assert.doesNotThrow(() => handle.dispose());
+});
+
+test('定稿视觉：三个外环管径 0.025', () => {
+  assert.equal(RING_TUBE_RADIUS, 0.025);
+  assert.ok(RING_ARC_TUBE[0] >= RING_TUBE_RADIUS * 0.9, '短弧要跟上主管径');
+  assert.ok(RING_ARC_TUBE[1] <= RING_TUBE_RADIUS * 1.4, '短弧也不该无限粗');
+});
+
+test('环上亮点直径明显大于环厚（半径 = 2 × 管径 ⇒ 直径 4×）', () => {
+  assert.ok(Math.abs(RING_NODE_RADIUS - RING_TUBE_RADIUS * 2) < 1e-12);
+  assert.ok(RING_NODE_RADIUS * 2 >= RING_TUBE_RADIUS * 3, '亮点要"一眼看得见"，不是仅比环厚一点点');
+});
+
+test('核心自转 = 0.6 × 最快环（静息与运行同一比例，结构性而非按状态给常量）', () => {
+  assert.equal(CORE_SPIN_RATIO, 0.6);
+  const ring1 = OUTER_RING_DEFINITIONS[0].speed;          // rad/s @1×
+  assert.ok(Math.abs(ring1 * CORE_SPIN_RATIO - 0.066) < 1e-9,
+    `核心基准角速度应为 0.066（= 0.11 × 0.6），实得 ${ring1 * CORE_SPIN_RATIO}`);
+  // 两态都不许改这个关系：静息 0.825× 与运行 134.4× 下，核心/环1 的角速度比仍是 0.6
+  for (const mult of [0.825, 134.4]) {
+    const core = ring1 * CORE_SPIN_RATIO * mult;
+    const ring = ring1 * mult;
+    assert.ok(Math.abs(core / ring - 0.6) < 1e-12, `乘子 ${mult} 下比例跑偏：${core / ring}`);
+  }
 });

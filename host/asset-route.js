@@ -107,7 +107,10 @@ export function registerAssetRoute(ctx, packageDir) {
       }
       res.writeHead(200, {
         'content-type': 'application/javascript; charset=utf-8',
-        'cache-control': 'no-cache',
+        // no-store 而不是 no-cache：这些是**开发回路里的活文件**（球体/three 闭包），
+        // 浏览器对 no-cache 仍允许"带校验缓存"，没有 ETag 时个别客户端会拿旧模块不刷新 ——
+        // 实测踩过一次：服务端已是 0.18 的环，窗口里还是 0.036 的（追问"为什么看不出变粗"）。
+        'cache-control': 'no-store',
       });
       res.end(req.method === 'HEAD' ? undefined : readFileSync(file));
     },
