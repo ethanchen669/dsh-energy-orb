@@ -32,8 +32,8 @@
     },
     {
       "path": "client/sphere/options.js",
-      "bytes": 1538,
-      "sha256": "84ea5090deb741e9dae5cbab60228e9f06c2abb503aab067f5b9f7a27905b1d5",
+      "bytes": 1513,
+      "sha256": "a116aabe2670cb9e01caf2b5f8fc41ec22d5d6d0959732bb06a884a406de7460",
       "source": "src/options.js"
     },
     {

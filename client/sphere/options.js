@@ -11,9 +11,9 @@ export const DEFAULT_OPTIONS = Object.freeze({
 
 const RANGES = Object.freeze({
   bpm: [30, 200],
-  // 上界从 4 提到 24：运行态环速由宿主按活动强度给到 8~16×（DSH 插件侧），
-  // 上界太小会把高速直接判成越界（RangeError 被上层吞掉时表现为"转速没变"）。
-  rotationSpeed: [0, 24],
+  // 上界 200：运行态转速与心跳挂钩（环1 rev/min ≈ 1.25 × bpm ⇒ 乘子最高约 134），
+  // 上界太小会把高速判成越界，症状同样是"转速没变"。
+  rotationSpeed: [0, 200],
   energy: [0, 2],
   coreScale: [0.75, 1.5],
   coreBrightness: [0, 2],

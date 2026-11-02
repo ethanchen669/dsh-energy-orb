@@ -83,9 +83,9 @@ test('参数默认值即定稿视觉；越界抛 RangeError', () => {
   );
   assert.doesNotThrow(() => normalizeOptions({}, { bpm: 30, rotationSpeed: 0, energy: 0, coreScale: 0.75, coreBrightness: 0 }));
   assert.doesNotThrow(() => normalizeOptions({}, { bpm: 200, rotationSpeed: 4, energy: 2, coreScale: 1.5, coreBrightness: 2 }));
-  // 运行态会给到 8~16×：上界 24 必须放行（上界太小会把高速判成越界，症状是"转速没变"）
-  assert.equal(normalizeOptions({}, { rotationSpeed: 24 }).rotationSpeed, 24);
-  for (const patch of [{ bpm: 29 }, { rotationSpeed: 24.0001 }, { energy: -0.1 }, { coreScale: 0.7 }, { coreBrightness: 2.1 }]) {
+  // 运行态最高约 134×：上界 200 必须放行（上界太小会把高速判成越界，症状是"转速没变"）
+  assert.equal(normalizeOptions({}, { rotationSpeed: 200 }).rotationSpeed, 200);
+  for (const patch of [{ bpm: 29 }, { rotationSpeed: 200.0001 }, { energy: -0.1 }, { coreScale: 0.7 }, { coreBrightness: 2.1 }]) {
     assert.throws(() => normalizeOptions({}, patch), RangeError, `应抛 RangeError：${JSON.stringify(patch)}`);
   }
   assert.throws(() => normalizeOptions({}, { bpm: NaN }), RangeError);

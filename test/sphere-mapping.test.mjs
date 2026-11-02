@@ -52,13 +52,16 @@ test('激活比静息更大更亮（同一组尺子上的单调性）', () => {
   assert.ok(a.rotationSpeed > i.rotationSpeed);
 });
 
-test('运行态环速随强度提频：8~16×，静息 0.825×（旧静息的 1.5 倍，钉死精确值）', () => {
+test('运行态环速跟着心跳走：环1 rev/min ≈ 1.25 × bpm，静息 0.825×（旧静息的 1.5 倍）', () => {
   const hot = T.stateToSphereOptions(active({ intensity: 1 }), NOW);
   const cold = T.stateToSphereOptions(active({ intensity: 0 }), NOW);
   const idleState = T.stateToSphereOptions(idle(), NOW);
   assert.equal(idleState.rotationSpeed, 0.825, '静息环速（= 旧 0.55 × 1.5）');
-  assert.equal(cold.rotationSpeed, 8, '运行态（强度 0）环速');
-  assert.equal(hot.rotationSpeed, 16, '运行态（强度 1）环速');
+  // 运行态 = 1.2 × bpm：强度 0 → 1.2×64 = 76.8；强度 1 → 1.2×112 = 134.4
+  assert.equal(cold.rotationSpeed, 76.8, '运行态（强度 0）环速');
+  assert.equal(hot.rotationSpeed, 134.4, '运行态（强度 1）环速');
+  assert.equal(cold.bpm, 64);
+  assert.equal(hot.bpm, 112);
   assert.ok(hot.rotationSpeed > cold.rotationSpeed, '强度越高转得越快');
   assert.ok(cold.rotationSpeed > idleState.rotationSpeed, '运行态任何强度都快于静息');
 });
@@ -142,4 +145,24 @@ test('插值按真实排程收敛：RAMP_MS 内补齐到目标（不会永远差
   assert.deepEqual(current, target, `RAMP_MS 内未补齐（走了 ${ticks.length} 步）`);
   assert.ok(ticks.length >= 4 && ticks.length <= 20, `步数应在合理区间：${ticks.length}`);
   assert.ok(T.RAMP_MS >= 200 && T.RAMP_MS <= 800, 'RAMP_MS 应在几百毫秒量级');
+});
+
+test('运行态三环的转速明显高于心跳（环1 rev/min ≥ 1.2 × bpm；环2/环3 同速域推进）', () => {
+  const defs = { ring1: 0.11, ring2: 0.075, ring3: 0.045 };   // rad/s @ 1×（energy-sphere.js 的 OUTER_RING_DEFINITIONS）
+  const toRpm = (radPerSec) => (radPerSec * 60) / (2 * Math.PI);
+  for (const intensity of [0, 0.5, 1]) {
+    const o = T.stateToSphereOptions(active({ intensity }), NOW);
+    const ring1Rpm = toRpm(defs.ring1 * o.rotationSpeed);
+    // 三环基准角速度本来就不同（0.11 / 0.075 / 0.045 rad/s，为的是层次感），
+    // 因此"明显高于心跳"这条钉在**最快环**上；另两环按几何比例留在同一速域但更低。
+    assert.ok(ring1Rpm >= 1.2 * o.bpm,
+      `强度 ${intensity}: 环1 ${ring1Rpm.toFixed(1)} rpm 必须明显高于心跳 ${o.bpm} bpm（≥1.2×）`);
+    const ring2Rpm = toRpm(defs.ring2 * o.rotationSpeed);
+    const ring3Rpm = toRpm(defs.ring3 * o.rotationSpeed);
+    assert.ok(ring2Rpm >= 0.8 * o.bpm, `强度 ${intensity}: 环2 ${ring2Rpm.toFixed(1)} rpm 应 ≥0.8×bpm`);
+    assert.ok(ring3Rpm >= 0.5 * o.bpm, `强度 ${intensity}: 环3 ${ring3Rpm.toFixed(1)} rpm 应 ≥0.5×bpm`);
+    assert.ok(ring1Rpm > ring2Rpm && ring2Rpm > ring3Rpm, '三环仍应保持快慢层次');
+  }
+  const idleOpts = T.stateToSphereOptions(idle(), NOW);
+  assert.ok(toRpm(defs.ring1 * idleOpts.rotationSpeed) < 5, '静息仍要慢（环1 < 5 rpm）');
 });

@@ -121,7 +121,9 @@ window.__ModuleLoader__.load({
         energy: 1,
         // 环速随活动强度提频（1.8~3.0×，静息 0.55×）：转速是逐帧积分的
         // （见 energy-sphere.js 的 updateRingPose），ramp 只做平滑加减速、不回卷历史角。
-        rotationSpeed: reducedMotion ? 0 : 8 + 8 * clean.intensity,
+        // 环速跟着心跳走：环1 的 rev/min ≈ 1.25 × bpm（乘子 = 1.2 × bpm），
+        // 保证"转动明显快于心跳"（用户口径），且随强度一起提频。
+        rotationSpeed: reducedMotion ? 0 : 1.2 * (64 + 48 * clean.intensity),
         bpm: 64 + 48 * clean.intensity,
       };
     }

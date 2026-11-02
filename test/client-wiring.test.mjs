@@ -79,7 +79,7 @@ test('转速 ramp 比其余参数更陡：静息↔运行切换时先起转，�
     coreScale: 1.08,
     coreBrightness: 1.3,
     energy: 1,
-    rotationSpeed: 16,
+    rotationSpeed: 134.4,
   };
   // 模拟 RAMP_STEP_MS = 33ms 的一串 tick：到 198ms（6 tick）时，转速必须基本到位，
   // 而 coreScale 仍明显在路上（420ms 的通用 ramp 只走一半左右）。
@@ -94,8 +94,8 @@ test('转速 ramp 比其余参数更陡：静息↔运行切换时先起转，�
       progress: rotProgress,
     });
   }
-  assert.equal(current.rotationSpeed, 16, '转速 ramp 到期（170ms）后必须精确落在目标值');
-  const rotDone = (current.rotationSpeed - idleOpts.rotationSpeed) / (16 - idleOpts.rotationSpeed);
+  assert.equal(current.rotationSpeed, 134.4, '转速 ramp 到期（170ms）后必须精确落在目标值');
+  const rotDone = (current.rotationSpeed - idleOpts.rotationSpeed) / (134.4 - idleOpts.rotationSpeed);
   const scaleDone = (current.coreScale - idleOpts.coreScale) / (activeOpts.coreScale - idleOpts.coreScale);
   assert.ok(rotDone >= 0.98, `198ms 时转速应基本到位，实到 ${(rotDone * 100).toFixed(1)}%`);
   // 通用 ramp（420ms/alpha 0.3）到 198ms 约 88%：仍明显在路上，但更关键的是"没到位"这件事
