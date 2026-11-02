@@ -26,14 +26,14 @@
     },
     {
       "path": "client/sphere/energy-sphere.js",
-      "bytes": 21913,
-      "sha256": "6589a15538f745458434d2c2c0cd9b971fa358bd7801e6ae923aeb2edfe9c4de",
+      "bytes": 22394,
+      "sha256": "2d7105eae789d85459994170386a71662c3e77ddde75a3f9cccc7666416474d0",
       "source": "src/energy-sphere.js"
     },
     {
       "path": "client/sphere/options.js",
-      "bytes": 1324,
-      "sha256": "137e740d2a133af1a718331adba93c7334d50e9a9e28c04ea316c0ed93178142",
+      "bytes": 1538,
+      "sha256": "84ea5090deb741e9dae5cbab60228e9f06c2abb503aab067f5b9f7a27905b1d5",
       "source": "src/options.js"
     },
     {

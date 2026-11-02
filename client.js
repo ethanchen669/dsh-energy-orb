@@ -17,6 +17,10 @@ window.__ModuleLoader__.load({
     const STALE_MS = 10_000;
     const RAMP_STEP_MS = 33;
     const RAMP_ALPHA = 0.3;
+    // 环速的 ramp 比其余参数**更短更陡**：静息↔运行切换时，转速要在 ~170ms 内到位，
+    // 先给你一记"起转"的手感，核大小/亮度仍按 420ms 慢慢过渡。
+    const ROT_RAMP_MS = 170;
+    const ROT_RAMP_ALPHA = 0.45;
     const RAMP_MS = 420;
 
     // 降级警示：每类恰一次（设计「错误与失败模式」）
@@ -117,7 +121,7 @@ window.__ModuleLoader__.load({
         energy: 1,
         // 环速随活动强度提频（1.8~3.0×，静息 0.55×）：转速是逐帧积分的
         // （见 energy-sphere.js 的 updateRingPose），ramp 只做平滑加减速、不回卷历史角。
-        rotationSpeed: reducedMotion ? 0 : 1.8 + 1.2 * clean.intensity,
+        rotationSpeed: reducedMotion ? 0 : 8 + 8 * clean.intensity,
         bpm: 64 + 48 * clean.intensity,
       };
     }
@@ -129,7 +133,8 @@ window.__ModuleLoader__.load({
         coreScale: 0.82,
         coreBrightness: 0.5,
         energy: 0.55,
-        rotationSpeed: reducedMotion ? 0 : 0.55,
+        // 静息 = 旧静息 0.55× 的 1.5 倍（用户口径）
+        rotationSpeed: reducedMotion ? 0 : 0.825,
         bpm: 56,
       };
     }
@@ -142,12 +147,16 @@ window.__ModuleLoader__.load({
      * `progress` 是「本次 ramp 已走过的比例」（0..1）：布尔/颜色在过半时切换——
      * 只用 alpha 判的话，固定 alpha（如 0.3）永远够不到 0.5，心跳就永不切换（试过，40 步收敛不了）。
      */
-    function smoothOptions(current, target, alpha, progress = 1) {
+    function smoothOptions(current, target, alpha, progress = 1, rotation = null) {
       const out = {};
       for (const key of NUMERIC_KEYS) {
         const from = Number.isFinite(current[key]) ? current[key] : target[key];
-        out[key] = from + (target[key] - from) * alpha;
+        // 转速走自己的（更陡的）插值参数，其余参数用通用那组
+        const a = key === 'rotationSpeed' && rotation ? rotation.alpha : alpha;
+        out[key] = from + (target[key] - from) * a;
       }
+      // 转速的 ramp 一到期就**精确落位**（指数插值永远差最后一点，手感上会"起转一半"）
+      if (rotation && rotation.progress >= 1) out.rotationSpeed = target.rotationSpeed;
       const switchNow = progress >= 0.5;
       out.heartbeatEnabled = switchNow ? target.heartbeatEnabled : current.heartbeatEnabled;
       out.color = switchNow ? target.color : current.color;
@@ -187,10 +196,15 @@ window.__ModuleLoader__.load({
         const step = () => {
           rampTimer = 0;
           if (stopped || !sphereRef.current) return;
-          const progress = Math.min(1, (Date.now() - rampStart) / RAMP_MS);
+          const now = Date.now();
+          const progress = Math.min(1, (now - rampStart) / RAMP_MS);
+          const rotProgress = Math.min(1, (now - rampStart) / ROT_RAMP_MS);
           currentOptions = progress >= 1
             ? targetOptions
-            : smoothOptions(currentOptions, targetOptions, RAMP_ALPHA, progress);
+            : smoothOptions(currentOptions, targetOptions, RAMP_ALPHA, progress, {
+              alpha: ROT_RAMP_ALPHA,
+              progress: rotProgress,
+            });
           sphereRef.current.update(toPatch(currentOptions));
           if (progress < 1) rampTimer = window.setTimeout(step, RAMP_STEP_MS);
         };
@@ -354,6 +368,9 @@ window.__ModuleLoader__.load({
         STALE_MS,
         OPTION_KEYS,
         RAMP_MS,
+        ROT_RAMP_MS,
+        ROT_RAMP_ALPHA,
+        RAMP_ALPHA,
       },
     };
   },

@@ -346,6 +346,8 @@ export function createEnergySphere(container, initialOptions = {}) {
   let contextLost = false;
   let frameId = null;
   let coreElapsed = 0;
+  let coreYaw = 0;      // 核心偏航累计角（增量积分，乘子变化不回卷）
+  let innerSpin = 0;    // 内环自转累计角（同上）
   let lastTime = performance.now();
   let manualPulseStarted = -Infinity;
   let manualPulseStrength = 0;
@@ -459,7 +461,7 @@ export function createEnergySphere(container, initialOptions = {}) {
     const pulse = heart.beat + manual;
     const scale = heart.scale * CORE_VISUAL_SCALE * options.coreScale * (1 + manual * 0.11);
     core.group.scale.setScalar(scale);
-    core.group.rotation.y = coreElapsed * 0.055 * options.rotationSpeed;
+    core.group.rotation.y = coreYaw;
     core.group.rotation.x = Math.sin(coreElapsed * 0.17) * 0.035;
     core.surfaceMaterial.uniforms.uTime.value = coreElapsed;
     core.surfaceMaterial.uniforms.uBeat.value = pulse;
@@ -469,7 +471,7 @@ export function createEnergySphere(container, initialOptions = {}) {
     for (const material of core.colorMaterials) {
       material.opacity = material.userData.baseOpacity * options.coreBrightness;
     }
-    core.innerRing.rotation.z = coreElapsed * 0.2;
+    core.innerRing.rotation.z = innerSpin;
     // 时间推进在 animate 的运行分支里（advanceMotion），这里只按当前姿态作画。
     haloMaterial.opacity = (0.025 + heart.glow * 0.035 + manual * 0.025)
       * options.energy * options.coreBrightness;
@@ -494,7 +496,11 @@ export function createEnergySphere(container, initialOptions = {}) {
       rings.forEach((ring, index) => {
         updateRingPose(ring, OUTER_RING_DEFINITIONS[index], delta, options.rotationSpeed);
       });
-      dustMaterial.rotation.z -= delta * 0.018 * options.rotationSpeed;
+      // 自转全部走增量积分：速度乘子只影响未来角，状态切换不会把历史角重算成"糊影"。
+      coreYaw += delta * 0.055 * options.rotationSpeed;
+      innerSpin += delta * 0.2 * options.rotationSpeed;
+      // 灰尘系数 0.018 → 0.06：细圆的转动本身不可见（圆旋转对称），粒子场才是速度的主要视觉线索。
+      dustMaterial.rotation.z -= delta * 0.06 * options.rotationSpeed;
       if (options.heartbeatEnabled) coreElapsed += delta;
       renderVisualState(currentHeart(), manual);
     }
