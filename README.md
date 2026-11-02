@@ -35,7 +35,7 @@
 
 ## 装在界面的哪里
 
-右侧留白、不挡内容 —— 默认 192 × 192 的悬浮层，贴在右下角（`shell.overlay`），可拖拽到任意角落。
+右侧留白、不挡内容 —— 默认 240 × 240 的悬浮层（视图等比放大 1.25× 之后），贴在右下角（`shell.overlay`），可拖拽到任意角落。
 **官方 UI 实拍**（纯净 DSH Web GUI，未加载任何皮肤）：
 
 <p align="center">
@@ -72,7 +72,7 @@ dsh plugin --profile=<你的 profile> add link:/绝对路径/dsh-plugins/dsh-ene
 | 项 | 位置 | 说明 |
 | --- | --- | --- |
 | `enabled` | cordis Config | 唯一配置项，默认 `true`；关掉等于不挂载 |
-| `visible` / `size` / `anchor` / `offset` | 浏览器 localStorage，键 `energy-orb.display` | 显隐、直径（`size` 32–256，默认 96 → 192px）、贴哪一角、拖拽偏移 |
+| `visible` / `size` / `anchor` / `offset` | 浏览器 localStorage，键 `energy-orb.display` | 显隐、直径（`size` 32–256，默认 120 → 240px；旧存档按 `v:2` 自动 ×1.25 迁移一次）、贴哪一角、拖拽偏移 |
 
 没有别的配置面：状态来自 Harness 的会话事件，不来自配置。
 
@@ -116,7 +116,9 @@ node scripts/verify-host.mjs               # 宿主级集成：真 cordis + 真 
 node scripts/verify-visual.mjs             # 浏览器 probe：真资产路由 + 真 WebGL 像素（42 项；产物落 .tmp/，加 --save 写回 docs/verify/）
 node scripts/verify-live.mjs --self-test   # live 检查脚本自证
 node scripts/vendor-sphere.mjs --check     # vendored 资产与上游 demo 是否一致
-node scripts/shoot-readme.mjs              # 重出 README 效果图（docs/images/*.png）
+node scripts/shoot-readme.mjs              # 重出 hero/states/overlay（夹具，DPR1）
+DSH_BIN=../dsh-fly/node_modules/.bin/dsh \
+  node scripts/shoot-vanilla-ui.mjs        # 重出「官方 UI 实拍」两张（scratch home + npm 版 + 真 dsh web）
 ```
 
 本仓同时被 `dsh-fly` 的 [`plugins.lock.json`](https://github.com/ethanchen669/dsh-fly/blob/main/plugins.lock.json) 登记为外部插件：

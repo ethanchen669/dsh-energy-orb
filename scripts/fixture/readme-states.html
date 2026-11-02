@@ -27,16 +27,16 @@ import { createEnergySphere } from '/energy-orb/assets/sphere/energy-sphere.js';
 
 const IDLE = {
   color: '#42dcff', heartbeatEnabled: false, coreScale: 0.82, coreBrightness: 0.5,
-  energy: 0.55, rotationSpeed: 0.55, bpm: 56, paused: true,
+  energy: 0.55, rotationSpeed: 0.825, bpm: 56, paused: true,
 };
 const ACTIVE = {
-  color: '#42dcff', heartbeatEnabled: false, coreScale: 1.08, coreBrightness: 1.3,
-  energy: 1, rotationSpeed: 1, bpm: 112, paused: true,
+  color: '#42dcff', heartbeatEnabled: false, coreScale: 1.08, coreBrightness: 0.975,
+  energy: 0.9, rotationSpeed: 117.6, bpm: 112, paused: true,
 };
 const CASES = [
-  { id: 'idle', options: IDLE, title: '静息', detail: '心跳关闭 · 核心 0.82× · 辉光 0.5' },
-  { id: 'active', options: ACTIVE, title: '激活', detail: '核心 1.08× · 辉光 1.3 · 外环全速' },
-  { id: 'live', options: { ...ACTIVE, paused: false, heartbeatEnabled: true }, title: '使用中', detail: '双拍心跳 · 64→112 BPM' },
+  { id: 'idle', options: IDLE, title: '静息', detail: '心跳关闭 · 核心 0.82× · 辉光 0.5 · 环 0.9 rev/min' },
+  { id: 'active', options: ACTIVE, title: '激活', detail: '核心 1.08× · 辉光 0.975 · 环速 1.05×bpm' },
+  { id: 'live', options: { ...ACTIVE, paused: false, heartbeatEnabled: true }, title: '使用中', detail: '双拍心跳 · 64→112 BPM · 最快环 124 rev/min' },
 ];
 
 const strip = document.getElementById('strip');
