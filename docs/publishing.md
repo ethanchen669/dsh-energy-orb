@@ -26,6 +26,8 @@ npm stage publish --access public --registry=https://registry.npmjs.org/
 
 | `0.1.2` | 2026-11-02 07:1x | **推 `v0.1.2` tag → GitHub Actions** | **有**（slsa provenance v1） | 视觉定稿（环 0.025、亮点直径 4×环厚、画布 240px、运行亮度 75%、环速 1.05×bpm）+ 状态绑定「主视图当前会话」；CI `release` 成功 → attestation 200（对照 404）、发布包与本地 `npm pack` **29 文件逐文件 sha256 全等**；装到空目录后定稿值全部命中 |
 
+| `0.2.0` | 2026-11-02 13:38 | **推 `v0.2.0` tag → GitHub Actions** | **有**（slsa provenance v1） | 功能版：隐藏/展开（朝 × 角收起的逆动效）+「隐藏 / hide」悬浮提示 + 折叠态把手可拖拽（跟手）。首推后用户实测报三处问题（原生 title 叠影、把手在文档流里把球挤出盒子被裁、折叠态拖拽滞后 43.5px），**tag 删除重建**在 `1938bb80` 后才发；CI 成功 → attestation 200（对照 404）、发布包与本地 `npm pack` 29 文件逐文件 sha256 全等；装到空目录后折叠/跟手相关符号与视觉定稿值全部命中 |
+
 `0.1.0` 没有 git tag：**推 `v*` tag 会触发 release.yml**，而该版本已存在于 registry，CI 必然失败。
 tag 驱动的发布从 `v0.1.1` 起（已验证：attestation 200 + 内容一致）。之后每一版都走
 「改 version → 提交 → `git tag -a vX.Y.Z` → 推 main 与 tag」。
