@@ -53,6 +53,32 @@ type EnergyOrbState = {
 }
 ```
 
+### 本地偏好（localStorage `energy-orb.display`，`v: 2`）
+
+| 字段 | 语义 |
+| --- | --- |
+| `visible` | 整层显隐（缺省 `true`） |
+| `collapsed` | **折叠 = 收成 40px 小把手**（缺省 `false`；老存档没有这个字段一律按展开处理） |
+| `size` | 半径语义，画布 = `size × 2`；缺省 120（→240px），`v:2` 迁移时旧值 ×1.25 一次 |
+| `anchor` / `offset` | 贴哪一角 / 拖拽偏移（px，clamp ±4096） |
+
+**隐藏 / 展开的接缝**：展开态右上角一个 `data-dsh-energy-orb-hide` 的 ×（hover/focus 才显形，`aria-label="隐藏能量球"`，
+旁边带一个 `data-dsh-energy-orb-hide-label` 的「隐藏 / hide」气泡）；折叠态缩成 40px 的
+`data-dsh-energy-orb-handle` 把手（`<button>`，`aria-label="展开能量球"`，箭头 ↘/↙ 朝向展开方向）。
+
+**动效是同一组属性的逆过程**（`COLLAPSE_MS = 220`）：根节点宽度/高度/定位边一起过渡，舞台
+`opacity 1↔0` + `scale 1↔0.32`，把手 `opacity 0↔1` + `scale 0.85↔1`，两侧 duration 相同——所以展开就是
+把收起的曲线倒着走，不会出现"收起顺滑、展开硬切"。
+
+**收起方向 = × 所在的上右角**：`frameStyle()` 是定位唯一真源，收起时保持**上边与右边不动**、
+只把 `bottom`（左锚点则 `left`）增加 `size×2 − 40`，配合舞台 `transform-origin: top right`，
+视觉上的消失点就是 × 的位置。门禁在真浏览器里量这条不变量（收起/展开途中上边与右边的偏移必须 ≈0，
+宽度单调收缩/变大），而不是只看最终态。
+
+切换同时做三件事：①`setPrefs` + 落盘；②**直接改 DOM**（`data-dsh-energy-orb-collapsed`、四条定位边、
+舞台/把手的 opacity/scale/pointerEvents）——fixture 与极简渲染器不会因 `setState` 重渲染，光靠框架会
+"点了没反应"；③球体 `update({paused})`，折叠期间 rAF 不空转。真 React 里下一次渲染会按 prefs 复现同样形状。
+
 ### 资产路由（浏览器加载渲染体的唯一通道）
 
 | 路由 | 白名单 | 错误 |

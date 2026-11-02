@@ -66,7 +66,13 @@ test('loadPrefs/savePrefs round-trip + 垃圾输入回落默认 + clamp', () => 
   };
   const prefs = { visible: false, size: 120, anchor: 'bottom-left', offset: { x: -40, y: 22 } };
   T.savePrefs(storage, prefs);
-  assert.deepEqual(T.loadPrefs(storage), { ...prefs, v: 2 }, 'savePrefs 要带上迁移版本号');
+  const reloaded = T.loadPrefs(storage);
+  assert.equal(reloaded.v, 2, 'savePrefs 要带上迁移版本号');
+  assert.equal(reloaded.size, prefs.size);
+  assert.equal(reloaded.anchor, prefs.anchor);
+  assert.equal(reloaded.visible, prefs.visible);
+  assert.equal(reloaded.collapsed, false, '折叠默认关；savePrefs 也要把它一起存下去');
+  assert.deepEqual(reloaded.offset, prefs.offset);
 
   mem.set('energy-orb.display', '{not json');
   // 视图等比放大 1.25×：默认 size 96 → 120（画布 240×240）；旧存档按 1.25 迁移一次并打版本号
@@ -83,7 +89,7 @@ test('loadPrefs/savePrefs round-trip + 垃圾输入回落默认 + clamp', () => 
 
   // 垃圾输入：无 v ⇒ 当旧存档迁移（9999×1.25 远超上限）⇒ clamp 到 256
   mem.set('energy-orb.display', JSON.stringify({ size: 9999, anchor: 'nope', offset: { x: 'x' } }));
-  assert.deepEqual(T.loadPrefs(storage), { v: 2, visible: true, size: 256, anchor: 'bottom-right', offset: { x: 0, y: 0 } });
+  assert.deepEqual(T.loadPrefs(storage), { v: 2, visible: true, collapsed: false, size: 256, anchor: 'bottom-right', offset: { x: 0, y: 0 } });
 });
 
 test('转速 ramp 比其余参数更陡：静息↔运行切换时先起转，核大小仍按 420ms 过渡', () => {

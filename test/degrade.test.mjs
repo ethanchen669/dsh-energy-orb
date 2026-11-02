@@ -6,6 +6,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  findByData,
+  findOneByData,
   installWindowGlobals,
   loadClientSpec,
   mountComponent,
@@ -50,8 +52,13 @@ async function mount({ assets, prefs, reducedMotion = false } = {}) {
     querySelector(sel) { return sel === 'canvas' ? (this.children.find((c) => c.style) || null) : null; },
     appendChild(node) { this.children.push(node); return node; },
   };
-  const stage = tree.children[0];
-  if (stage && stage.props && stage.props.ref) stage.props.ref.current = container;
+  const stage = findOneByData(tree, 'data-dsh-energy-orb-stage');
+  // 真 React 支持函数 ref（我们用它同时写 stageRef 与 containerRef）：桩里也要按同形调用
+  const bindRef = (ref) => {
+    if (typeof ref === 'function') ref(container);
+    else if (ref && typeof ref === 'object') ref.current = container;
+  };
+  if (stage && stage.props && stage.props.ref) bindRef(stage.props.ref);
   await new Promise((r) => setTimeout(r, 40));   // 放行 import + create + 首次 update
   return {
     stub, OrbComponent, mod, tree, stage, container,
@@ -70,7 +77,7 @@ test('球体模块加载失败 → 可见的 CSS 降级球；单根元素；warn
   try {
     assert.equal(m.tree.props['data-dsh-energy-orb-root'], '', '根元素应带 data-dsh-energy-orb-root');
     const tree2 = m.stub.render(m.OrbComponent);
-    const fallbackNodes = tree2.children.filter((c) => c.props['data-dsh-energy-orb-fallback'] !== undefined);
+    const fallbackNodes = findByData(tree2, 'data-dsh-energy-orb-fallback');
     assert.equal(fallbackNodes.length, 1, '降级态应恰一个降级球节点');
     const child = fallbackNodes[0];
     assert.equal(child.type, 'div');
@@ -148,7 +155,8 @@ test('纯点击 → 一次 pulse；拖拽 → 不 pulse 且写回 offset', async
   globalThis.window.removeEventListener = (n) => listeners.delete(n);
   const m = await mount({ assets: { sphere: OK_SPHERE }, prefs: { size: 96, anchor: 'bottom-right', offset: { x: 0, y: 0 } } });
   try {
-    const down = m.tree.props.onPointerDown;
+    // 拖拽/点击挂在**舞台**上（根元素只负责定位与折叠状态，折叠后舞台不渲染）
+    const down = m.stage.props.onPointerDown;
     down({ clientX: 100, clientY: 100 });
     listeners.get('pointerup')();
     const pulses = STUB_CALLS.filter((c) => c.kind === 'pulse');
@@ -206,11 +214,86 @@ export function createEnergySphere(container, options) {
   const m = await mount({ assets: { sphere: ERROR_SPHERE } });
   try {
     const tree2 = m.stub.render(m.OrbComponent);
-    assert.equal(tree2.children[0].props['data-dsh-energy-orb-fallback'], '', 'onError 后应切降级球');
+    assert.ok(findOneByData(tree2, 'data-dsh-energy-orb-fallback'), 'onError 后应切降级球');
     assert.equal(warns.length, 1, `webgl 降级 warn 应恰一次，实际 ${warns.length}`);
   } finally {
     m.stub.unmount();
     m.restore();
     console.warn = origWarn;
+  }
+});
+
+test('隐藏/展开：默认展开；点隐藏按钮折叠成 40px 把手并落盘；点把手展开并恢复球体', async () => {
+  STUB_CALLS.length = 0;
+  mem.delete('energy-orb.display');
+  const m = await mount({ assets: { sphere: OK_SPHERE } });
+  try {
+    const root = () => m.stub.render(m.OrbComponent);
+    // ① 默认展开：有舞台、有隐藏按钮，没有把手
+    assert.ok(findOneByData(root(), 'data-dsh-energy-orb-stage'), '默认应渲染球体舞台');
+    const expandedStage = findOneByData(root(), 'data-dsh-energy-orb-stage');
+    const hideButton = findOneByData(root(), 'data-dsh-energy-orb-hide');
+    assert.ok(hideButton, '默认应有隐藏按钮');
+    assert.equal(hideButton.props['aria-label'], '隐藏能量球');
+    // hover 提示：× 按钮里带一个"隐藏 / hide"标签（纯 CSS 显隐），读屏器走 aria-label
+    const hideLabel = findByData(root(), 'data-dsh-energy-orb-hide-label')[0];
+    assert.ok(hideLabel, '× 按钮里应有悬浮提示节点');
+    assert.equal(hideLabel.children.join(''), '隐藏 / hide');
+    assert.equal(hideLabel.props['aria-hidden'], 'true', '提示文字不该被读屏器重复朗读');
+
+    // ② 点隐藏 → 折叠：舞台 display:none、把手显形、根节点尺寸缩到 40px、prefs 落盘
+    hideButton.props.onClick({ stopPropagation() {} });
+    const collapsedTree = root();
+    assert.equal(collapsedTree.props['data-dsh-energy-orb-collapsed'], 'true');
+    const collapsedStage = findOneByData(collapsedTree, 'data-dsh-energy-orb-stage');
+    assert.equal(collapsedStage.props.style.opacity, 0, '折叠后舞台必须淡出（不是一刀切 display:none）');
+    assert.ok(String(collapsedStage.props.style.transform).includes('scale(0.32'), '折叠后舞台要缩进角落');
+    assert.equal(collapsedStage.props.style.pointerEvents, 'none', '折叠后舞台不接指针');
+    assert.equal(collapsedStage.props.style.transition, expandedStage.props.style.transition, '两个方向必须是同一组过渡（逆过程）');
+    const handle = findOneByData(collapsedTree, 'data-dsh-energy-orb-handle');
+    assert.ok(handle, '折叠后应有把手');
+    assert.equal(handle.props.style.opacity, 1, '折叠后把手要显形（淡入）');
+    assert.equal(handle.props.style.pointerEvents, 'auto', '折叠后把手接指针');
+    assert.equal(handle.props.tabIndex, 0, '折叠后把手可被 Tab 到');
+    assert.equal(handle.props['aria-label'], '展开能量球');
+    assert.equal(findOneByData(collapsedTree, 'data-dsh-energy-orb-hide').props.style.display, 'none', '折叠后隐藏按钮让位给把手');
+    assert.equal(collapsedTree.props.style.width, '40px');
+    assert.equal(collapsedTree.props.style.height, '40px');
+    assert.equal(JSON.parse(mem.get('energy-orb.display')).collapsed, true, '折叠状态要落盘');
+    assert.ok(STUB_CALLS.some((c) => c.kind === 'update' && c.patch.paused === true), '折叠后应把球体暂停');
+
+    // ③ 点把手 → 展开：舞台恢复、折叠标记复位、球体恢复
+    handle.props.onClick({ stopPropagation() {} });
+    const expandedTree = root();
+    assert.equal(expandedTree.props['data-dsh-energy-orb-collapsed'], 'false');
+    const backStage = findOneByData(expandedTree, 'data-dsh-energy-orb-stage');
+    assert.equal(backStage.props.style.opacity, 1, '展开后舞台淡入');
+    assert.ok(String(backStage.props.style.transform).includes('scale(1'), '展开后舞台回到 1:1');
+    assert.equal(backStage.props.style.transition, expandedStage.props.style.transition);
+    assert.equal(findOneByData(expandedTree, 'data-dsh-energy-orb-handle').props.style.opacity, 0, '展开后把手淡出');
+    assert.equal(JSON.parse(mem.get('energy-orb.display')).collapsed, false);
+    assert.ok(STUB_CALLS.some((c) => c.kind === 'update' && c.patch.paused === false), '展开后应恢复球体');
+
+    // ④ 键盘可达：把手是 button（原生支持 Enter/Space），类型必须是 button（别在表单里提交）
+    assert.equal(handle.type, 'button');
+    assert.equal(handle.props.type, 'button');
+  } finally {
+    m.stub.unmount();
+    m.restore();
+    mem.delete('energy-orb.display');
+  }
+});
+
+test('老存档没有 collapsed 字段 → 按展开处理（迁移不许把球自动藏起来）', async () => {
+  mem.set('energy-orb.display', JSON.stringify({ visible: true, size: 96, anchor: 'bottom-right', offset: { x: 0, y: 0 } }));
+  const m = await mount({ assets: { sphere: OK_SPHERE } });
+  try {
+    const tree = m.stub.render(m.OrbComponent);
+    assert.equal(tree.props['data-dsh-energy-orb-collapsed'], 'false');
+    assert.equal(findOneByData(tree, 'data-dsh-energy-orb-stage').props.style.opacity, 1);
+  } finally {
+    m.stub.unmount();
+    m.restore();
+    mem.delete('energy-orb.display');
   }
 });

@@ -142,3 +142,27 @@ export function newRenderContext() {
   reactDelegate._impl = stub.React;
   return stub;
 }
+
+/** 深度遍历渲染树（`h()` 产物）：children 可能是节点、数组或 null（条件渲染）。 */
+export function walkTree(node, visit) {
+  if (node === null || node === undefined || typeof node !== 'object') return;
+  visit(node);
+  for (const child of Array.isArray(node.children) ? node.children : []) {
+    if (Array.isArray(child)) for (const nested of child) walkTree(nested, visit);
+    else walkTree(child, visit);
+  }
+}
+
+/** 找所有带指定 data-* 属性的节点（折叠把手 / 隐藏按钮 / 舞台容器都靠它定位）。 */
+export function findByData(node, attribute) {
+  const found = [];
+  walkTree(node, (candidate) => {
+    if (candidate.props && Object.prototype.hasOwnProperty.call(candidate.props, attribute)) found.push(candidate);
+  });
+  return found;
+}
+
+/** 找第一个带指定 data-* 属性的节点（没有就 null）。 */
+export function findOneByData(node, attribute) {
+  return findByData(node, attribute)[0] ?? null;
+}

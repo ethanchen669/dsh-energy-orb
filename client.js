@@ -24,6 +24,32 @@ window.__ModuleLoader__.load({
     const ROT_RAMP_MS = 170;
     const ROT_RAMP_ALPHA = 0.45;
     const RAMP_MS = 420;
+    /** 折叠后小把手的边长（px）：要小到"不占地方"，又要大到点得中（40 是触控下限附近）。 */
+    const HANDLE_SIZE = 40;
+    /** 折叠动画时长：根节点尺寸、舞台缩放淡出、把手缩放淡入**共用**，两个方向才是同一组过渡的逆过程。 */
+    const COLLAPSE_MS = 220;
+    /** 折叠把手/隐藏按钮的样式（一次注入，避免每帧拼样式字符串）。 */
+    const CHROME_CSS = [
+      '.energyOrb-hide{opacity:0;transition:opacity 160ms ease}',
+      '.energyOrb-root:hover .energyOrb-hide,.energyOrb-hide:focus-visible{opacity:1}',
+      '.energyOrb-handle{font:700 18px/1 ui-monospace,monospace;color:#c8eeff;letter-spacing:0;',
+      'text-shadow:0 0 10px rgba(66,220,255,.85);',
+      'background:rgba(8,14,20,.62);border:1px solid rgba(66,220,255,.38);border-radius:12px;',
+      'box-shadow:0 0 12px rgba(66,220,255,.28),inset 0 0 10px rgba(66,220,255,.12);',
+      'cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;height:100%;',
+      'padding:0;appearance:none;backdrop-filter:blur(6px);transition:transform 160ms ease,box-shadow 160ms ease}',
+      '.energyOrb-handle:hover{transform:translateY(-1px);box-shadow:0 0 18px rgba(66,220,255,.45),inset 0 0 12px rgba(66,220,255,.18)}',
+      '.energyOrb-handle:focus-visible{outline:2px solid rgba(66,220,255,.8);outline-offset:2px}',
+      '@keyframes energyOrbHandlePulse{0%,100%{opacity:.55}50%{opacity:1}}',
+      // 悬浮在 × 上时的提示文字（"隐藏 / hide"）：纯 CSS 显隐，不引入状态机
+      '.energyOrb-hideLabel{position:absolute;right:27px;top:50%;transform:translateY(-50%) translateX(4px);',
+      'white-space:nowrap;padding:3px 8px;border-radius:7px;font:600 11.5px/1.35 -apple-system,"PingFang SC",sans-serif;',
+      'letter-spacing:.02em;color:#d8f1ff;background:rgba(8,14,20,.86);border:1px solid rgba(66,220,255,.35);',
+      'box-shadow:0 2px 10px rgba(0,0,0,.35);opacity:0;pointer-events:none;',
+      'transition:opacity 140ms ease,transform 140ms ease}',
+      '.energyOrb-hide:hover .energyOrb-hideLabel,.energyOrb-hide:focus-visible .energyOrb-hideLabel{opacity:1;',
+      'transform:translateY(-50%) translateX(0)}',
+    ].join('\n');
 
     // 降级警示：每类恰一次（设计「错误与失败模式」）
     let warned = false;
@@ -80,6 +106,8 @@ window.__ModuleLoader__.load({
       return {
         v: PREFS_VERSION,
         visible: src.visible === undefined ? true : !!src.visible,
+        // 折叠 = 收成一个小把手（隐藏/展开功能）；默认展开。缺字段的老存档一律按展开处理
+        collapsed: src.collapsed === true,
         size,
         anchor,
         offset: { x: clampOff(off.x), y: clampOff(off.y) },
@@ -233,6 +261,12 @@ window.__ModuleLoader__.load({
       const [lastState, setLastState] = React.useState(null);
       const containerRef = React.useRef(null);
       const sphereRef = React.useRef(null);
+      // 折叠/展开要**立刻**生效：显式 React 一定会重渲染，但 fixture/极简渲染器不会，
+      // 所以两处都做 —— 这里持有 DOM 引用，toggle 时直接改样式与属性（幂等，React 重渲染结果相同）。
+      const rootRef = React.useRef(null);
+      const stageRef = React.useRef(null);
+      const handleRef = React.useRef(null);
+      const hideRef = React.useRef(null);
       const prefsRef = React.useRef(prefs);
       const lastStateRef = React.useRef(null);
       prefsRef.current = prefs;
@@ -298,6 +332,7 @@ window.__ModuleLoader__.load({
               canvas.style.display = 'block';
             }
             sphereRef.current = sphere;
+            if (prefsRef.current.collapsed === true) sphere.update({ paused: true });   // 上次就折叠着：别再空转
             if (lastStateRef.current) retarget(lastStateRef.current);
           } catch {
             warnOnce('[energy-orb] sphere/vendor load failed; CSS fallback');
@@ -373,26 +408,192 @@ window.__ModuleLoader__.load({
         const decrease = decreaseWhenPositive ? delta >= 0 : delta < 0;
         return `calc(${base}px ${decrease ? '-' : '+'} ${Math.abs(delta)}px)`;
       };
+      const collapsed = prefs.collapsed === true;
+      /**
+       * 折叠/展开的定位框（唯一真源，render 与命令式切换共用）。
+       * 关键：收起时**上边与右边不动**（× 就在盒子的上右角）⇒ 盒子朝 × 那个角缩进去，
+       * 视觉上的消失点 = × 的位置；展开就是同一组边的逆过程。
+       */
+      const frameStyle = (isCollapsed, prefsNow) => {
+        const full = prefsNow.size * 2;
+        const px = isCollapsed ? HANDLE_SIZE : full;
+        const shrink = full - HANDLE_SIZE;          // 收起时盒子变小的量（保持上边不动 ⇒ bottom 增加）
+        if (prefsNow.anchor === 'bottom-left') {
+          // 左锚点：保持右边缘不动 ⇒ left 增加 shrink
+          return {
+            right: 'auto',
+            left: calcShift(26 + (isCollapsed ? shrink : 0), prefsNow.offset.x, false),
+            bottom: calcShift(22 + (isCollapsed ? shrink : 0), prefsNow.offset.y, true),
+            width: `${px}px`,
+            height: `${px}px`,
+          };
+        }
+        // 右锚点：右边缘不动 ⇒ 只把 bottom 增加 shrink
+        return {
+          right: calcShift(26, prefsNow.offset.x, true),
+          left: 'auto',
+          bottom: calcShift(22 + (isCollapsed ? shrink : 0), prefsNow.offset.y, true),
+          width: `${px}px`,
+          height: `${px}px`,
+        };
+      };
+      const frame = frameStyle(collapsed, prefs);
       const style = {
         position: 'fixed',
-        right: prefs.anchor === 'bottom-right' ? calcShift(26, prefs.offset.x, true) : 'auto',
-        left: prefs.anchor === 'bottom-left' ? calcShift(26, prefs.offset.x, false) : 'auto',
-        bottom: calcShift(22, prefs.offset.y, true),
-        width: `${prefs.size * 2}px`,
-        height: `${prefs.size * 2}px`,
+        ...frame,
         zIndex: 40,
         pointerEvents: 'auto',
         touchAction: 'none',
         display: prefs.visible ? 'block' : 'none',
+        // 收起时越界的画面裁掉，配合舞台的 top-right 缩放原点，视觉上"缩进 × 那个角"
+        overflow: 'hidden',
+        transformOrigin: 'top right',
+        transition: `width ${COLLAPSE_MS}ms ease, height ${COLLAPSE_MS}ms ease, bottom ${COLLAPSE_MS}ms ease, left ${COLLAPSE_MS}ms ease`,
       };
 
       const active = !!(lastState && lastState.active);
-      return h('div', {
-        'data-dsh-energy-orb-root': '',
-        className: 'energyOrb-root',
-        style,
-        onPointerDown,
-      }, fallback
+      /** 改折叠状态并落盘；展开/隐藏都走这一条，避免两处状态不同步。 */
+      /** 把折叠状态**立即**落到 DOM 上（与 render 里的初始值同形；幂等）。 */
+      const applyCollapsedDom = (next) => {
+        const collapsedNow = next === true;
+        const root = rootRef.current;
+        if (root && root.style) {
+          root.setAttribute('data-dsh-energy-orb-collapsed', collapsedNow ? 'true' : 'false');
+          const next = frameStyle(collapsedNow, prefsRef.current);
+          root.style.width = next.width;
+          root.style.height = next.height;
+          root.style.right = next.right;
+          root.style.left = next.left;
+          root.style.bottom = next.bottom;
+        }
+        const stage = stageRef.current;
+        if (stage && stage.style) {
+          stage.style.opacity = collapsedNow ? '0' : '1';
+          stage.style.transform = `scale(${collapsedNow ? 0.32 : 1})`;
+          stage.style.pointerEvents = collapsedNow ? 'none' : 'auto';
+        }
+        const handle = handleRef.current;
+        if (handle && handle.style) {
+          handle.style.opacity = collapsedNow ? '1' : '0';
+          handle.style.transform = `scale(${collapsedNow ? 1 : 0.85})`;
+          handle.style.pointerEvents = collapsedNow ? 'auto' : 'none';
+          handle.tabIndex = collapsedNow ? 0 : -1;
+        }
+        const hide = hideRef.current;
+        if (hide && hide.style) {
+          // × 不需要动画：它只属于展开态（hover 才显形）
+          hide.style.display = collapsedNow ? 'none' : 'block';
+        }
+      };
+
+      const setCollapsed = (next) => {
+        const updated = normalizePrefsShape({ ...prefsRef.current, collapsed: next });
+        setPrefs(updated);
+        savePrefs(window.localStorage, updated);
+        applyCollapsedDom(next);
+        // 折叠时把球体冻住（rAF 不空转、不白烧 GPU），展开立刻恢复
+        const sphere = sphereRef.current;
+        if (sphere && typeof sphere.update === 'function') sphere.update({ paused: next === true });
+      };
+
+      const chrome = h('style', { key: 'chrome' }, CHROME_CSS);
+
+      // 折叠把手：永远挂载，靠 display 切换（React 重渲染与命令式切换结果一致）
+      const handle = h('button', {
+        key: 'handle',
+        type: 'button',
+        ref: handleRef,
+        className: 'energyOrb-handle',
+        'data-dsh-energy-orb-handle': '',
+        'aria-label': '展开能量球',
+        'aria-expanded': !collapsed,
+        title: '展开能量球',
+        tabIndex: collapsed ? 0 : -1,
+        style: {
+          // 与舞台同一组属性、同一个时长，只是端点反过来：展开时把手缩小淡出、舞台放大淡入
+          opacity: collapsed ? 1 : 0,
+          transform: `scale(${collapsed ? 1 : 0.85})`,
+          transition: `opacity ${COLLAPSE_MS}ms ease, transform ${COLLAPSE_MS}ms ease`,
+          pointerEvents: collapsed ? 'auto' : 'none',
+        },
+        onClick: (event) => {
+          event.stopPropagation();
+          setCollapsed(false);
+        },
+        onPointerDown: (event) => event.stopPropagation(),
+      }, prefs.anchor === 'bottom-left' ? '↘' : '↙');
+
+      // 隐藏按钮：展开态右上角，平时透明、hover/focus 显形（不抢拖拽的面子）
+      const hideButton = h('button', {
+        key: 'hide',
+        type: 'button',
+        ref: hideRef,
+        className: 'energyOrb-hide',
+        'data-dsh-energy-orb-hide': '',
+        'aria-label': '隐藏能量球',
+        'aria-expanded': !collapsed,
+        title: '隐藏能量球',
+        style: {
+          display: collapsed ? 'none' : 'block',
+          position: 'absolute',
+          top: '2px',
+          right: '2px',
+          width: '22px',
+          height: '22px',
+          padding: 0,
+          lineHeight: '20px',
+          textAlign: 'center',
+          borderRadius: '50%',
+          border: '1px solid rgba(66,220,255,.4)',
+          background: 'rgba(8,14,20,.66)',
+          color: '#9fd8ff',
+          font: '600 13px/20px ui-monospace,monospace',
+          cursor: 'pointer',
+          appearance: 'none',
+          backdropFilter: 'blur(6px)',
+          zIndex: 2,
+        },
+        onClick: (event) => {
+          event.stopPropagation();
+          setCollapsed(true);
+        },
+        onPointerDown: (event) => event.stopPropagation(),
+      }, [
+        h('span', { key: 'glyph', 'aria-hidden': 'true' }, '×'),
+        // 悬浮提示：hover / focus 时出现在 × 左侧。`aria-hidden` 掉，读屏器用按钮自己的 aria-label
+        h('span', {
+          key: 'label',
+          className: 'energyOrb-hideLabel',
+          'data-dsh-energy-orb-hide-label': '',
+          'aria-hidden': 'true',
+        }, '隐藏 / hide'),
+      ]);
+
+      const stage = h('div', {
+        key: 'stage',
+        ref: (node) => {
+          stageRef.current = node;
+          containerRef.current = node;
+        },
+        'data-dsh-energy-orb-stage': '',
+        style: {
+          width: '100%',
+          height: '100%',
+          // 折叠 = 缩小 + 淡出（不是 display:none 一刀切），展开就是它的逆过程
+          opacity: collapsed ? 0 : 1,
+          transform: `scale(${collapsed ? 0.32 : 1})`,
+          // 收起要缩进 × 所在的角：× 永远在盒子右上角，所以原点固定 top right
+          transformOrigin: 'top right',
+          transition: `opacity ${COLLAPSE_MS}ms ease, transform ${COLLAPSE_MS}ms ease`,
+          pointerEvents: collapsed ? 'none' : 'auto',
+        },
+        onPointerDown: (e) => {
+          if (e.target && e.target.closest && e.target.closest('.energyOrb-hide')) return;   // 隐藏按钮自己处理
+          onPointerDown(e);
+        },
+      });
+
+      const paint = fallback
         ? [
             h('div', {
               key: 'fallback',
@@ -413,12 +614,16 @@ window.__ModuleLoader__.load({
             h('style', { key: 'fallbackStyle' },
               '@keyframes energyOrbBreath{0%,100%{filter:brightness(.85)}50%{filter:brightness(1.12)}}'),
           ]
-        : h('div', {
-            key: 'stage',
-            ref: containerRef,
-            'data-dsh-energy-orb-stage': '',
-            style: { width: '100%', height: '100%' },
-          }));
+        : stage;
+
+      return h('div', {
+        'data-dsh-energy-orb-root': '',
+        'data-dsh-energy-orb-collapsed': collapsed ? 'true' : 'false',
+        ref: rootRef,
+        className: 'energyOrb-root',
+        style,
+      }, [chrome, hideButton, handle, ...(Array.isArray(paint) ? paint : [paint])]);
+
     }
 
     return {

@@ -56,6 +56,8 @@ export function toDom(v) {
   const el = document.createElement(v.type);
   for (const [k, val] of Object.entries(v.props || {})) {
     if (k === 'style' && val && typeof val === 'object') Object.assign(el.style, val);
+    else if (k === 'className') el.className = val;                    // 真 React 的 className 语义（setAttribute 不认它）
+    else if (k === 'ref' && typeof val === 'function') val(el);         // 函数 ref（真 React 同形）
     else if (k === 'ref' && val && typeof val === 'object') val.current = el;
     else if (k.startsWith('on') && typeof val === 'function') el.addEventListener(k.slice(2).toLowerCase(), val);
     else el.setAttribute(k, val === '' ? '' : String(val));
