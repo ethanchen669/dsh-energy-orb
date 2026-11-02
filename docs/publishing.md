@@ -24,6 +24,8 @@ npm stage publish --access public --registry=https://registry.npmjs.org/
 | `0.1.0` | 2026-11-01 11:33 | 手工 `npm publish` | 无 | 发布包与仓库 HEAD 的 `npm pack` **逐字节相同**（shasum `bddd03592c40185acdbe991b5798ecfe1e299da8`）；内容含行 id `dsh-fly-energy-orb` |
 | `0.1.1` | 2026-11-01 12:21 | **推 `v0.1.1` tag → GitHub Actions** | **有**（slsa provenance v1） | Trusted Publisher 链路首验：tag 推上去 ≈3 分钟后 attestation 200（不存在的版本 404 作对照）；发布包内容与本地 `npm pack` 逐一相同（29 文件） |
 
+| `0.1.2` | 2026-11-02 07:1x | **推 `v0.1.2` tag → GitHub Actions** | **有**（slsa provenance v1） | 视觉定稿（环 0.025、亮点直径 4×环厚、画布 240px、运行亮度 75%、环速 1.05×bpm）+ 状态绑定「主视图当前会话」；CI `release` 成功 → attestation 200（对照 404）、发布包与本地 `npm pack` **29 文件逐文件 sha256 全等**；装到空目录后定稿值全部命中 |
+
 `0.1.0` 没有 git tag：**推 `v*` tag 会触发 release.yml**，而该版本已存在于 registry，CI 必然失败。
 tag 驱动的发布从 `v0.1.1` 起（已验证：attestation 200 + 内容一致）。之后每一版都走
 「改 version → 提交 → `git tag -a vX.Y.Z` → 推 main 与 tag」。
